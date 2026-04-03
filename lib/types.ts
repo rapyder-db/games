@@ -5,9 +5,13 @@ export type QuizQuestion = {
   correctIndex: number;
 };
 
+export type SubmittedAnswer = {
+  questionId: string;
+  answerIndex: number;
+};
+
 export type PlayerProfile = {
   id: string;
-  user_id: string;
   name: string;
   company_name: string;
   email: string;
@@ -16,7 +20,6 @@ export type PlayerProfile = {
 };
 
 export type LeaderboardEntry = {
-  user_id: string;
   player_id: string;
   name: string;
   company_name: string;

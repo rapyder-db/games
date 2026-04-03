@@ -1,6 +1,6 @@
 import { LeaderboardLive } from "@/components/leaderboard-live";
 import { fetchLeaderboard } from "@/lib/leaderboard";
-import { getSupabaseServerClient } from "@/lib/supabaseServer";
+import { getSupabaseAdminClient } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +14,13 @@ export default async function LeaderboardPage({
   searchParams,
 }: LeaderboardPageProps) {
   const params = await searchParams;
-  const supabase = await getSupabaseServerClient();
+  const supabase = getSupabaseAdminClient();
   const entries = await fetchLeaderboard(supabase);
 
   return (
     <LeaderboardLive
       initialEntries={entries}
-      highlightUserId={params.highlight ?? null}
+      highlightPlayerId={params.highlight ?? null}
     />
   );
 }

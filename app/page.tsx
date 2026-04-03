@@ -1,63 +1,70 @@
-import Link from "next/link";
-
+import { ArcadeLobby } from "@/components/arcade-lobby";
 import { AuthPanel } from "@/components/auth-panel";
-import { getSupabaseServerClient } from "@/lib/supabaseServer";
+import { getPlayerSession } from "@/lib/session";
+import { getSupabaseAdminClient } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const playerId = await getPlayerSession();
+  let player = null;
+
+  if (playerId) {
+    const admin = getSupabaseAdminClient();
+    const { data } = await admin
+      .from("players")
+      .select("id, name, company_name")
+      .eq("id", playerId)
+      .maybeSingle();
+
+    if (data) {
+      player = data;
+    }
+  }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-      <section className="panel bg-hero-glow p-8 sm:p-10">
-        <p className="text-sm uppercase tracking-[0.3em] text-slate-500">Cloud Quiz Experience</p>
-        <h1 className="mt-4 max-w-3xl font-[var(--font-heading)] text-5xl font-semibold leading-tight sm:text-6xl">
-          Rapyder Quiz + <span className="text-brand">Live Leaderboard</span>
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg text-slate-600">
-          A production-ready quiz app built on Next.js, Supabase Auth, Postgres, and Realtime.
-          Sign in, answer 10 MCQs, submit your best score, and watch the leaderboard update live.
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link href="/quiz" className="button-primary">
-            Start Quiz
-          </Link>
-          <Link href="/leaderboard" className="button-secondary">
-            View Leaderboard
-          </Link>
-        </div>
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
-          <div className="panel-muted p-4">
-            <p className="text-sm text-slate-500">Questions per run</p>
-            <p className="mt-2 text-2xl font-semibold">10</p>
-          </div>
-          <div className="panel-muted p-4">
-            <p className="text-sm text-slate-500">Scoring</p>
-            <p className="mt-2 text-2xl font-semibold">10 pts / correct</p>
-          </div>
-          <div className="panel-muted p-4">
-            <p className="text-sm text-slate-500">Realtime</p>
-            <p className="mt-2 text-2xl font-semibold">Top 50 live</p>
-          </div>
-        </div>
-      </section>
+    <div className="animate-fade-in relative z-10">
+      {player ? (
+        <ArcadeLobby player={player} />
+      ) : (
+        <div className="grid gap-5 px-3 py-2 sm:gap-6 sm:px-4 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10 lg:px-0">
+          <section className="panel-glass arcade-login-stage overflow-hidden p-5 sm:p-8 lg:p-14 flex flex-col justify-center min-h-[220px] sm:min-h-[280px]">
+            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Welcome to Rapyder Arcade
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm text-slate-300 sm:text-base">
+              Authenticate to grab your token and play for high score.
+            </p>
 
-      <div className="space-y-6">
-        <AuthPanel initialEmail={user?.email ?? null} />
-        <section className="panel p-6">
-          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">How it works</p>
-          <ol className="mt-4 space-y-3 text-sm text-slate-600">
-            <li>1. Sign in with magic link or Google via Supabase Auth.</li>
-            <li>2. Fill in your name and company, then answer 10 questions.</li>
-            <li>3. Submit your score through a server route with validation.</li>
-            <li>4. Watch the leaderboard refresh live with Supabase Realtime.</li>
-          </ol>
-        </section>
-      </div>
+            <div className="mt-6 overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/40 shadow-[0_20px_60px_rgba(0,0,0,0.45)] sm:mt-8">
+              <div className="flex items-center justify-between border-b border-white/10 bg-black/30 px-4 py-3">
+                <span className="text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-white/55">
+                  Reward Preview
+                </span>
+                <span className="text-[0.65rem] font-mono uppercase tracking-[0.2em] text-[#ffb000]/70">
+                  Smartwatch 3D
+                </span>
+              </div>
+
+              <div className="relative aspect-[4/5] w-full bg-[radial-gradient(circle_at_top,rgba(252,48,48,0.16),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.35)),#020202] sm:aspect-[16/10]">
+                <video
+                  className="h-full w-full object-cover"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="auto"
+                >
+                  <source src="/Smartwatch 3d.mp4" type="video/mp4" />
+                </video>
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_45%,rgba(0,0,0,0.18)_100%)]" />
+              </div>
+            </div>
+          </section>
+
+          <AuthPanel />
+        </div>
+      )}
     </div>
   );
 }

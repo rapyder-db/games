@@ -2,31 +2,34 @@ import { redirect } from "next/navigation";
 
 import { QuizExperience } from "@/components/quiz-experience";
 import { fetchBestScore, fetchPlayerProfile } from "@/lib/leaderboard";
-import { getSupabaseServerClient } from "@/lib/supabaseServer";
+import { getSupabaseAdminClient } from "@/lib/supabaseServer";
+import { getPlayerSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function QuizPage() {
-  const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const playerId = await getPlayerSession();
 
-  if (!user || !user.email) {
+  if (!playerId) {
     redirect("/");
   }
 
+  const supabase = getSupabaseAdminClient();
   const [playerProfile, bestScore] = await Promise.all([
-    fetchPlayerProfile(supabase, user.id),
-    fetchBestScore(supabase, user.id),
+    fetchPlayerProfile(supabase, playerId),
+    fetchBestScore(supabase, playerId),
   ]);
+
+  if (!playerProfile) {
+    redirect("/");
+  }
 
   return (
     <QuizExperience
-      userId={user.id}
-      userEmail={user.email}
-      initialName={playerProfile?.name ?? ""}
-      initialCompanyName={playerProfile?.company_name ?? ""}
+      playerId={playerId}
+      userEmail={playerProfile.email}
+      initialName={playerProfile.name}
+      initialCompanyName={playerProfile.company_name}
       bestScore={bestScore}
     />
   );

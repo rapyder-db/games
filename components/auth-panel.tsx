@@ -1,137 +1,105 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { Route } from "next";
 import { toast } from "sonner";
 
-import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
-
 type AuthPanelProps = {
-  initialEmail: string | null;
+  onLogin?: () => void;
 };
 
-export function AuthPanel({ initialEmail }: AuthPanelProps) {
+export function AuthPanel({ onLogin }: AuthPanelProps) {
   const router = useRouter();
-  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
-  const [email, setEmail] = useState(initialEmail ?? "");
-  const [userEmail, setUserEmail] = useState(initialEmail);
-  const [loading, setLoading] = useState<"magic" | "google" | "signout" | null>(null);
+  const [loading, setLoading] = useState(false);
+  
+  const [name, setName] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [email, setEmail] = useState("");
 
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserEmail(session?.user.email ?? null);
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, companyName, email }),
+      });
+      
+      const payload = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(payload.error || "Authentication Error");
+      }
+      
+      toast.success("Identity Confirmed");
+      if (onLogin) {
+        onLogin();
+      } else {
+        router.push("/" as Route);
+      }
       router.refresh();
-    });
-
-    return () => subscription.unsubscribe();
-  }, [router, supabase]);
-
-  async function handleMagicLink(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading("magic");
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    setLoading(null);
-
-    if (error) {
-      toast.error(error.message);
-      return;
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
     }
-
-    toast.success("Magic link sent. Check your inbox.");
-  }
-
-  async function handleGoogleLogin() {
-    setLoading("google");
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      setLoading(null);
-      toast.error(error.message);
-    }
-  }
-
-  async function handleSignOut() {
-    setLoading("signout");
-    const { error } = await supabase.auth.signOut();
-    setLoading(null);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    toast.success("Signed out");
-    router.refresh();
-  }
-
-  if (userEmail) {
-    return (
-      <div className="panel p-6">
-        <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Signed in</p>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="font-[var(--font-heading)] text-2xl font-semibold">{userEmail}</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Your session is active. Head to the quiz and submit your best score.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={loading === "signout"}
-            className="button-secondary"
-          >
-            {loading === "signout" ? "Signing out..." : "Sign out"}
-          </button>
-        </div>
-      </div>
-    );
   }
 
   return (
-    <div className="panel p-6">
-      <div className="mb-5">
-        <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Sign in to play</p>
-        <h2 className="mt-2 font-[var(--font-heading)] text-2xl font-semibold">
-          Use Magic Link or Google
+    <div className="panel-glass overflow-hidden p-5 sm:p-8 lg:p-10">
+      <div className="mb-8 sm:mb-10">
+        <div className="inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand/10 px-3 py-1 mb-6">
+          <span className="text-[0.65rem] font-medium text-white/80 uppercase tracking-widest">Player Login</span>
+        </div>
+        <h2 className="text-3xl font-semibold text-white tracking-tight sm:text-4xl lg:text-5xl">
+          Enter The Arcade
         </h2>
+        <p className="text-sm text-slate-400 mt-3 max-w-md font-light">
+          Sign in once, claim the 3D coin, move to the cabinet, and start the challenge.
+        </p>
       </div>
 
-      <form onSubmit={handleMagicLink} className="space-y-4">
-        <input
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@company.com"
-          className="input"
-          required
-        />
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <button type="submit" disabled={loading !== null} className="button-primary flex-1">
-            {loading === "magic" ? "Sending..." : "Send Magic Link"}
-          </button>
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={loading !== null}
-            className="button-secondary flex-1"
-          >
-            {loading === "google" ? "Redirecting..." : "Continue with Google"}
+      <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
+        <label className="block">
+          <span className="ml-1 mb-2 block text-xs font-medium text-slate-300 uppercase tracking-wider">Player Name</span>
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="input-glass"
+            placeholder="Jane Doe"
+          />
+        </label>
+        <label className="block">
+          <span className="ml-1 mb-2 block text-xs font-medium text-slate-300 uppercase tracking-wider">Company</span>
+          <input
+            type="text"
+            required
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            className="input-glass"
+            placeholder="Acme Corporation"
+          />
+        </label>
+        <label className="block">
+          <span className="ml-1 mb-2 block text-xs font-medium text-slate-300 uppercase tracking-wider">Email</span>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="input-glass"
+            placeholder="jane@company.com"
+          />
+        </label>
+        
+        <div className="pt-2 sm:pt-4">
+          <button type="submit" disabled={loading} className="button-glass-primary w-full shadow-brand/20">
+            {loading ? "Logging In..." : "Claim Coin"}
           </button>
         </div>
       </form>

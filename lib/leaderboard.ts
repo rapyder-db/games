@@ -9,7 +9,7 @@ export async function fetchLeaderboard(
 ) {
   const { data, error } = await client
     .from("leaderboard_entries")
-    .select("user_id, player_id, name, company_name, score, updated_at, quiz_version")
+    .select("player_id, name, company_name, score, updated_at, quiz_version")
     .eq("quiz_version", quizVersion)
     .order("score", { ascending: false })
     .order("updated_at", { ascending: true })
@@ -22,11 +22,11 @@ export async function fetchLeaderboard(
   return (data ?? []) as LeaderboardEntry[];
 }
 
-export async function fetchPlayerProfile(client: SupabaseClient, userId: string) {
+export async function fetchPlayerProfile(client: SupabaseClient, playerId: string) {
   const { data, error } = await client
     .from("players")
     .select("*")
-    .eq("user_id", userId)
+    .eq("id", playerId)
     .maybeSingle();
 
   if (error) {
@@ -36,11 +36,11 @@ export async function fetchPlayerProfile(client: SupabaseClient, userId: string)
   return data as PlayerProfile | null;
 }
 
-export async function fetchBestScore(client: SupabaseClient, userId: string) {
+export async function fetchBestScore(client: SupabaseClient, playerId: string) {
   const { data, error } = await client
     .from("scores")
     .select("score")
-    .eq("user_id", userId)
+    .eq("player_id", playerId)
     .eq("quiz_version", QUIZ_VERSION)
     .maybeSingle();
 

@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { QUIZ_VERSION, quizQuestions } from "@/lib/quizQuestions";
-import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabaseServer";
+import { getSupabaseAdminClient } from "@/lib/supabaseServer";
 import { submitScoreSchema } from "@/lib/validation";
+import { getPlayerSession } from "@/lib/session";
 
 export async function POST(request: Request) {
-  const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const playerId = await getPlayerSession();
 
-  if (!user || !user.email) {
+  if (!playerId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -27,31 +25,28 @@ export async function POST(request: Request) {
   }
 
   const admin = getSupabaseAdminClient();
-  const score = parsed.data.answers.reduce((total, answer, index) => {
-    return total + (answer === quizQuestions[index].correctIndex ? 10 : 0);
+  const questionMap = new Map(quizQuestions.map((question) => [question.id, question]));
+  const score = parsed.data.answers.reduce((total, answer) => {
+    const question = questionMap.get(answer.questionId);
+
+    if (!question) {
+      return total;
+    }
+
+    return total + (answer.answerIndex === question.correctIndex ? 10 : 0);
   }, 0);
   const correctAnswers = score / 10;
 
   const { data: player, error: playerError } = await admin
     .from("players")
-    .upsert(
-      {
-        user_id: user.id,
-        name: parsed.data.name,
-        company_name: parsed.data.companyName,
-        email: user.email,
-      },
-      {
-        onConflict: "user_id",
-      },
-    )
     .select("*")
+    .eq("id", playerId)
     .single();
 
   if (playerError || !player) {
     return NextResponse.json(
       {
-        error: playerError?.message ?? "Unable to save player profile",
+        error: playerError?.message ?? "Player profile not found",
       },
       { status: 500 },
     );
@@ -60,7 +55,7 @@ export async function POST(request: Request) {
   const { data: existingScore, error: existingScoreError } = await admin
     .from("scores")
     .select("id, score")
-    .eq("user_id", user.id)
+    .eq("player_id", playerId)
     .eq("quiz_version", QUIZ_VERSION)
     .maybeSingle();
 
@@ -73,9 +68,7 @@ export async function POST(request: Request) {
 
   if (!existingScore) {
     const { error } = await admin.from("scores").insert({
-      user_id: user.id,
-      player_id: player.id,
-      email: user.email,
+      player_id: playerId,
       score,
       quiz_version: QUIZ_VERSION,
     });
@@ -90,8 +83,6 @@ export async function POST(request: Request) {
     const { error } = await admin
       .from("scores")
       .update({
-        player_id: player.id,
-        email: user.email,
         score,
       })
       .eq("id", existingScore.id);
@@ -104,10 +95,24 @@ export async function POST(request: Request) {
     updated = true;
   }
 
+  const { data: rankedEntries, error: rankError } = await admin
+    .from("leaderboard_entries")
+    .select("player_id")
+    .eq("quiz_version", QUIZ_VERSION)
+    .order("score", { ascending: false })
+    .order("updated_at", { ascending: true });
+
+  if (rankError) {
+    return NextResponse.json({ error: rankError.message }, { status: 500 });
+  }
+
+  const rank = (rankedEntries ?? []).findIndex((entry) => entry.player_id === playerId) + 1;
+
   return NextResponse.json({
     score,
     correctAnswers,
     bestScore,
     updated,
+    rank,
   });
 }

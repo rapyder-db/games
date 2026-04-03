@@ -1,28 +1,31 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export function SiteHeader() {
   return (
-    <header className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-full border border-white/70 bg-white/75 px-5 py-3 shadow-panel backdrop-blur">
-      <Link href="/" className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-brand to-accent text-sm font-bold text-white">
-          RQ
-        </div>
-        <div>
-          <p className="font-[var(--font-heading)] text-lg font-semibold">Rapyder Quiz</p>
-          <p className="text-xs text-slate-500">Supabase + Realtime leaderboard</p>
-        </div>
+    <header className="relative z-50 mb-10 flex items-center justify-between border-b border-white/10 pb-4 pt-3 sm:mb-14 sm:pb-5 sm:pt-4">
+      <Link
+        href="/"
+        className="flex items-center gap-4 rounded-xl transition-opacity hover:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+      >
+        <Image
+          src="/Rapyder_V2.svg"
+          alt="Rapyder Logo"
+          width={360}
+          height={104}
+          className="h-auto w-[126px] object-contain drop-shadow-md sm:w-[156px] lg:w-[192px]"
+          priority
+        />
       </Link>
-      <nav className="flex items-center gap-2 text-sm">
-        <Link href="/" className="button-secondary px-4 py-2">
-          Home
-        </Link>
-        <Link href="/quiz" className="button-secondary px-4 py-2">
-          Quiz
-        </Link>
-        <Link href="/leaderboard" className="button-primary px-4 py-2">
+      
+      <div className="flex items-center gap-4 sm:gap-6">
+        <Link
+          href="/leaderboard"
+          className="rounded-xl px-2 py-1 text-[0.7rem] font-semibold uppercase tracking-widest text-slate-400 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:text-xs"
+        >
           Leaderboard
         </Link>
-      </nav>
+      </div>
     </header>
   );
 }
