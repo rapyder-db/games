@@ -111,7 +111,7 @@ export async function POST(request: Request) {
         </defs>
 
         <image href="${backgroundUrl}" width="768" height="1408" />
-        <image href="${logoUrl}" x="141" y="64" width="486" height="140" preserveAspectRatio="xMidYMid meet" />
+        <image href="${logoUrl}" x="68" y="64" width="632" height="182" preserveAspectRatio="xMidYMid meet" />
 
         <g font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle">
           <text x="386" y="1212" font-size="${titleFontSize}" fill="#5a2600">${safeTitle}</text>
@@ -120,14 +120,14 @@ export async function POST(request: Request) {
           <text x="386" y="704" font-size="${nameFontSize}" fill="#5a2600">${safeName}</text>
           <text x="384" y="700" font-size="${nameFontSize}" fill="#FFD978">${safeName}</text>
 
-          <text x="386" y="806" font-size="${companyFontSize}" fill="#5a2600">${safeCompany}</text>
-          <text x="384" y="802" font-size="${companyFontSize}" fill="#FFD978">${safeCompany}</text>
+          <text x="386" y="801" font-size="${companyFontSize}" fill="#5a2600">${safeCompany}</text>
+          <text x="384" y="797" font-size="${companyFontSize}" fill="#FFD978">${safeCompany}</text>
 
           <text x="386" y="928" font-size="24" fill="#2f1400">SCORE</text>
           <text x="384" y="924" font-size="24" fill="#F7EBC7">SCORE</text>
 
-          <text x="388" y="1035" font-size="76" fill="#FF915F" filter="url(#scoreGlow)">${safeScore}</text>
-          <text x="388" y="1035" font-size="76" fill="#FFD76B">${safeScore}</text>
+          <text x="388" y="1055" font-size="76" fill="#FF915F" filter="url(#scoreGlow)">${safeScore}</text>
+          <text x="388" y="1055" font-size="76" fill="#FFD76B">${safeScore}</text>
         </g>
       </svg>
     `.trim();
