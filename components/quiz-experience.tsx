@@ -119,6 +119,7 @@ export function QuizExperience({
   const [scoreCardUrl, setScoreCardUrl] = useState<string | null>(null);
   const [generatingCard, setGeneratingCard] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const lastRevealSoundRef = useRef<string | null>(null);
 
   const getAudioContext = () => {
     if (audioContextRef.current) {
@@ -132,7 +133,7 @@ export function QuizExperience({
     return context;
   };
 
-  const playSfx = (type: "button" | "select" | "success" | "error") => {
+  const playSfx = (type: "button" | "select" | "success" | "error" | "reveal") => {
     const ctx = getAudioContext();
     if (!ctx) return;
     if (ctx.state === "suspended") {
@@ -180,6 +181,30 @@ export function QuizExperience({
         osc.start(now);
         osc.stop(now + 0.14);
         break;
+      case "reveal": {
+        gain.gain.setValueAtTime(0.0001, now);
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(980, now + 0.22);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+        osc.start(now);
+        osc.stop(now + 0.42);
+
+        const emberOsc = ctx.createOscillator();
+        const emberGain = ctx.createGain();
+        emberOsc.type = "triangle";
+        emberOsc.frequency.setValueAtTime(160, now + 0.02);
+        emberOsc.frequency.exponentialRampToValueAtTime(420, now + 0.28);
+        emberGain.gain.setValueAtTime(0.0001, now + 0.02);
+        emberGain.gain.exponentialRampToValueAtTime(0.12, now + 0.08);
+        emberGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+        emberOsc.connect(emberGain);
+        emberGain.connect(ctx.destination);
+        emberOsc.start(now + 0.02);
+        emberOsc.stop(now + 0.5);
+        break;
+      }
     }
   };
 
@@ -194,6 +219,15 @@ export function QuizExperience({
   );
 
   useEffect(() => {
+    return () => {
+      if (audioContextRef.current) {
+        void audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (step !== "summary") {
       return;
     }
@@ -203,7 +237,16 @@ export function QuizExperience({
     return () => window.clearTimeout(reset);
   }, [step]);
 
-  const localScore = useMemo(
+  useEffect(() => {
+    if (!scoreCardUrl || lastRevealSoundRef.current === scoreCardUrl) {
+      return;
+    }
+
+    lastRevealSoundRef.current = scoreCardUrl;
+    playSfx("reveal");
+  }, [scoreCardUrl]);
+
+  const correctAnswers = useMemo(
     () =>
       answers.reduce((total, answer, index) => {
         return total + (answer === questions[index].correctIndex ? 1 : 0);
@@ -234,14 +277,6 @@ export function QuizExperience({
     return `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(shareCopy)}`;
   }, [rewardState, shareCopy]);
 
-  const correctAnswers = useMemo(
-    () =>
-      answers.reduce((total, answer, index) => {
-        return total + (answer === questions[index].correctIndex ? 1 : 0);
-      }, 0),
-    [answers, questions],
-  );
-
   const scoreCardFileName = useMemo(() => {
     if (!rewardState) {
       return "score-card.png";
@@ -266,9 +301,15 @@ export function QuizExperience({
   }
 
   function handleSelect(answerIndex: number) {
-    const nextAnswers = [...answers];
-    nextAnswers[currentIndex] = answerIndex;
-    setAnswers(nextAnswers);
+    setAnswers((currentAnswers) => {
+      if (currentAnswers[currentIndex] === answerIndex) {
+        return currentAnswers;
+      }
+
+      const nextAnswers = [...currentAnswers];
+      nextAnswers[currentIndex] = answerIndex;
+      return nextAnswers;
+    });
     playSfx("select");
   }
 
@@ -465,6 +506,7 @@ export function QuizExperience({
     setStep("quiz");
     setRewardState(null);
     setScoreCardUrl(null);
+    lastRevealSoundRef.current = null;
   }
 
   if (rewardState) {
@@ -641,7 +683,7 @@ export function QuizExperience({
         <div className="mt-8 grid gap-4 sm:mt-12 sm:grid-cols-3 sm:gap-6 lg:mt-16">
           <div className="dot-matrix-screen p-4 py-6 sm:p-6 sm:py-8">
             <p className="text-sm font-mono text-[#ffb000]/60 uppercase tracking-widest mb-4">Final Score</p>
-            <p className="text-3xl text-neon-amber font-mono drop-shadow-[0_0_15px_#ffb000] led-flicker sm:text-4xl">{String(localScore).padStart(2, '0')}/10</p>
+            <p className="text-3xl text-neon-amber font-mono drop-shadow-[0_0_15px_#ffb000] led-flicker sm:text-4xl">{String(correctAnswers).padStart(2, '0')}/10</p>
           </div>
           <div className="dot-matrix-screen p-4 py-6 sm:p-6 sm:py-8">
             <p className="text-sm font-mono text-[#ffb000]/60 uppercase tracking-widest mb-4">Targets Hit</p>

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { QUIZ_VERSION } from "@/lib/quizQuestions";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
@@ -19,9 +18,18 @@ export function LeaderboardLive({
 }: LeaderboardLiveProps) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [entries, setEntries] = useState(initialEntries);
+  const refetchTimeoutRef = useRef<number | null>(null);
+  const refetchInFlightRef = useRef(false);
+  const lastPayloadRef = useRef(JSON.stringify(initialEntries));
 
   useEffect(() => {
     async function refetchLeaderboard() {
+      if (refetchInFlightRef.current) {
+        return;
+      }
+
+      refetchInFlightRef.current = true;
+
       const { data, error } = await supabase
         .from("leaderboard_entries")
         .select("player_id, name, company_name, score, updated_at, quiz_version")
@@ -31,11 +39,30 @@ export function LeaderboardLive({
         .limit(50);
 
       if (error) {
-        toast.error("Network link compromised");
+        refetchInFlightRef.current = false;
         return;
       }
 
-      setEntries((data ?? []) as LeaderboardEntry[]);
+      const nextEntries = (data ?? []) as LeaderboardEntry[];
+      const nextPayload = JSON.stringify(nextEntries);
+
+      if (nextPayload !== lastPayloadRef.current) {
+        lastPayloadRef.current = nextPayload;
+        setEntries(nextEntries);
+      }
+
+      refetchInFlightRef.current = false;
+    }
+
+    function scheduleRefetch() {
+      if (refetchTimeoutRef.current !== null) {
+        window.clearTimeout(refetchTimeoutRef.current);
+      }
+
+      refetchTimeoutRef.current = window.setTimeout(() => {
+        refetchTimeoutRef.current = null;
+        void refetchLeaderboard();
+      }, 180);
     }
 
     const channel = supabase
@@ -49,12 +76,16 @@ export function LeaderboardLive({
           filter: `quiz_version=eq.${QUIZ_VERSION}`,
         },
         () => {
-          void refetchLeaderboard();
+          scheduleRefetch();
         },
       )
       .subscribe();
 
     return () => {
+      if (refetchTimeoutRef.current !== null) {
+        window.clearTimeout(refetchTimeoutRef.current);
+      }
+
       void supabase.removeChannel(channel);
     };
   }, [supabase]);

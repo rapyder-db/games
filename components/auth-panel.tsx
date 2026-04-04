@@ -40,7 +40,6 @@ export function AuthPanel({ onLogin }: AuthPanelProps) {
       } else {
         router.push("/" as Route);
       }
-      router.refresh();
     } catch (err: any) {
       toast.error(err.message);
     } finally {

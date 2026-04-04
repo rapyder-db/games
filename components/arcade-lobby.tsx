@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -25,7 +25,12 @@ export function ArcadeLobby({ player }: ArcadeLobbyProps) {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [shaking, setShaking] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const storageKey = useMemo(() => `arcade_lobby_stage:${player.id}`, [player.id]);
+  const mutedRef = useRef(muted);
+  const storageKey = `arcade_lobby_stage:${player.id}`;
+
+  useEffect(() => {
+    mutedRef.current = muted;
+  }, [muted]);
 
   useEffect(() => {
     const savedStage = window.sessionStorage.getItem(storageKey);
@@ -60,7 +65,7 @@ export function ArcadeLobby({ player }: ArcadeLobbyProps) {
   };
 
   const playSfx = (type: "button" | "coin" | "success" | "tick") => {
-    if (muted) {
+    if (mutedRef.current) {
       return;
     }
 
@@ -115,6 +120,15 @@ export function ArcadeLobby({ player }: ArcadeLobbyProps) {
   };
 
   useEffect(() => {
+    return () => {
+      if (audioContextRef.current) {
+        void audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (stage !== "inserting") {
       setHudMessage("");
       setCountdown(null);
@@ -155,7 +169,6 @@ export function ArcadeLobby({ player }: ArcadeLobbyProps) {
 
     const routeTimer = window.setTimeout(() => {
       router.push("/quiz");
-      router.refresh();
     }, 2400);
 
     return () => {
@@ -163,13 +176,13 @@ export function ArcadeLobby({ player }: ArcadeLobbyProps) {
       window.clearTimeout(bootTimer);
       window.clearTimeout(routeTimer);
     };
-  }, [router, stage, muted]);
+  }, [router, stage]);
 
   async function handleLogout() {
     setLoading(true);
     await fetch("/api/logout", { method: "POST" });
     setLoading(false);
-    router.refresh();
+    router.replace("/");
     toast.success("Session terminated");
   }
 
