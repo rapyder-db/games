@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { QUIZ_VERSION } from "@/lib/quizQuestions";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import type { LeaderboardEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,7 @@ export function LeaderboardLive({
       const { data, error } = await supabase
         .from("leaderboard_entries")
         .select("player_id, name, company_name, score, updated_at, quiz_version")
-        .eq("quiz_version", "v1")
+        .eq("quiz_version", QUIZ_VERSION)
         .order("score", { ascending: false })
         .order("updated_at", { ascending: true })
         .limit(50);
@@ -42,14 +43,14 @@ export function LeaderboardLive({
     }
 
     const channel = supabase
-      .channel("leaderboard-v1")
+      .channel(`leaderboard-${QUIZ_VERSION}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "scores",
-          filter: "quiz_version=eq.v1",
+          filter: `quiz_version=eq.${QUIZ_VERSION}`,
         },
         () => {
           void refetchLeaderboard();

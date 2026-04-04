@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import argparse
+import io
 import re
 from functools import lru_cache
 from pathlib import Path
 
+import fitz
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 BASE = Path(__file__).resolve().parent.parent
 PUBLIC = BASE / 'public'
 FONT_DIR = PUBLIC / 'fonts'
 LOGO_JPG = PUBLIC / 'Rapyder_Logo.jpg'
+LOGO_SVG = PUBLIC / 'Rapyder_V2.svg'
+LOGO_CLEAN_PNG = PUBLIC / 'rapyder-logo-clean.png'
 
 TEMPLATE_1 = PUBLIC / 'Template_Card 1.jpeg'
 TEMPLATE_2 = PUBLIC / 'Template_Card 2.jpeg'
@@ -89,6 +93,32 @@ def load_template(path_str: str, scale: int) -> Image.Image:
 
 @lru_cache(maxsize=None)
 def rasterize_logo(max_width: int, scale: int) -> Image.Image:
+    if LOGO_CLEAN_PNG.exists():
+        with Image.open(LOGO_CLEAN_PNG) as img:
+            logo = img.convert('RGBA')
+
+        alpha = logo.getchannel('A')
+        bbox = alpha.getbbox()
+        if bbox:
+            logo = logo.crop(bbox)
+
+        target_width = scale_px(max_width, scale)
+        ratio = target_width / logo.width
+        return logo.resize((int(logo.width * ratio), int(logo.height * ratio)), RESAMPLE)
+
+    if LOGO_SVG.exists():
+        svg_doc = fitz.open(LOGO_SVG)
+        page = svg_doc[0]
+        target_width = scale_px(max_width, scale)
+        zoom = target_width / page.rect.width
+        pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=True)
+        logo = Image.open(io.BytesIO(pix.tobytes("png"))).convert('RGBA')
+        alpha = logo.getchannel('A')
+        bbox = alpha.getbbox()
+        if bbox:
+            logo = logo.crop(bbox)
+        return logo
+
     with Image.open(LOGO_JPG) as img:
         logo = img.convert('RGBA')
 

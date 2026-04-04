@@ -594,6 +594,39 @@ body {
   pointer-events: none;
 }
 
+.reward-card-reveal {
+  overflow: hidden;
+  animation:
+    rewardCardFloatLeft 6s ease-in-out infinite,
+    rewardCardReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reward-card-image {
+  animation: rewardCardImagePop 0.8s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.reward-card-orbit {
+  position: absolute;
+  inset: -18%;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 176, 0, 0.16);
+  background:
+    conic-gradient(from 180deg, transparent 0deg, rgba(255, 176, 0, 0.24) 90deg, transparent 150deg, rgba(252, 48, 48, 0.2) 250deg, transparent 320deg);
+  filter: blur(8px);
+  opacity: 0.65;
+  animation: rewardCardOrbit 14s linear infinite;
+  pointer-events: none;
+}
+
+.reward-card-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 16%, rgba(255,255,255,0.04) 34%, rgba(255,255,255,0.22) 46%, transparent 58%);
+  transform: translateX(-130%);
+  animation: rewardCardShine 3.8s ease-in-out infinite 0.8s;
+  pointer-events: none;
+}
+
 .reward-card-float {
   animation: rewardCardFloatLeft 6s ease-in-out infinite;
 }
@@ -619,6 +652,50 @@ body {
   }
   50% {
     transform: translate3d(0, -12px, 0) rotateY(2deg) rotateX(-1deg);
+  }
+}
+
+@keyframes rewardCardReveal {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 36px, 0) scale(0.92) rotateY(-18deg) rotateX(8deg);
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes rewardCardOrbit {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.03);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes rewardCardShine {
+  0%,
+  16% {
+    transform: translateX(-130%);
+  }
+  32%,
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+@keyframes rewardCardImagePop {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -790,6 +867,11 @@ body {
     animation-duration: 0s;
     transform: none;
   }
+
+  .reward-card-orbit,
+  .reward-card-shine {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
@@ -873,7 +955,11 @@ body {
   .arcade-coin-spin,
   .arcade-stage-shake,
   .led-flicker,
-  .quiz-fact-panel {
+  .quiz-fact-panel,
+  .reward-card-reveal,
+  .reward-card-image,
+  .reward-card-orbit,
+  .reward-card-shine {
     animation: none !important;
   }
 }

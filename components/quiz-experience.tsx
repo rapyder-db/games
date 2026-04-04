@@ -1,6 +1,4 @@
 "use client";
-
-import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -25,11 +23,6 @@ type RewardState = {
   correctAnswers: number;
   bestCorrectAnswers: number;
   rewardUnlocked: boolean;
-};
-
-type ScoreCardPaths = {
-  template1: string;
-  template2: string;
 };
 
 function getPlayerTitle(rewardState: RewardState) {
@@ -69,6 +62,19 @@ const FACTS = [
   "Trusted by 500+ customers for GenAI‑driven cloud transformation.",
 ];
 
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "player";
+}
+
+async function dataUrlToFile(dataUrl: string, fileName: string) {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  return new File([blob], fileName, { type: blob.type || "image/png" });
+}
+
 export function QuizExperience({
   userEmail,
   initialName,
@@ -84,7 +90,7 @@ export function QuizExperience({
   const [submitting, setSubmitting] = useState(false);
   const [confettiActive, setConfettiActive] = useState(false);
   const [rewardState, setRewardState] = useState<RewardState | null>(null);
-  const [scoreCardPaths, setScoreCardPaths] = useState<ScoreCardPaths | null>(null);
+  const [scoreCardUrl, setScoreCardUrl] = useState<string | null>(null);
   const [generatingCard, setGeneratingCard] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -188,24 +194,19 @@ export function QuizExperience({
       `I scored ${rewardState.bestCorrectAnswers}/10 in the Rapyder Arcade Challenge at rapyder.com.`,
       `${initialName} | ${getPlayerTitle(rewardState)}`,
       `Rank #${rewardState.rank}`,
-      "I unlocked my Rapyder result cards.",
+      "My Rapyder result card is ready.",
       "Think you can beat my score?",
       "#rapyder",
     ].join("\n");
   }, [initialName, rewardState]);
 
   const linkedinShareUrl = useMemo(() => {
-    if (!rewardState || !scoreCardPaths || typeof window === "undefined") {
+    if (!rewardState || typeof window === "undefined") {
       return "";
     }
 
-    const absoluteCardUrls = [
-      new URL(scoreCardPaths.template1, window.location.origin).toString(),
-      new URL(scoreCardPaths.template2, window.location.origin).toString(),
-    ];
-    const shareText = `${shareCopy}\n${absoluteCardUrls.join("\n")}`;
-    return `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(shareText)}`;
-  }, [rewardState, scoreCardPaths, shareCopy]);
+    return `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(shareCopy)}`;
+  }, [rewardState, shareCopy]);
 
   const correctAnswers = useMemo(
     () =>
@@ -214,6 +215,14 @@ export function QuizExperience({
       }, 0),
     [answers, questions],
   );
+
+  const scoreCardFileName = useMemo(() => {
+    if (!rewardState) {
+      return "rapyder-score-card.png";
+    }
+
+    return `rapyder-template-2-${slugify(initialName)}-${rewardState.bestCorrectAnswers}-of-10.png`;
+  }, [initialName, rewardState]);
 
   function triggerRipple(event: MouseEvent<HTMLButtonElement>) {
     const button = event.currentTarget;
@@ -300,7 +309,7 @@ export function QuizExperience({
       setRewardState(nextRewardState);
 
       setGeneratingCard(true);
-      setScoreCardPaths(null);
+      setScoreCardUrl(null);
 
       const cardResponse = await fetch("/api/generate-score-card", {
         method: "POST",
@@ -316,14 +325,14 @@ export function QuizExperience({
 
       const cardPayload = (await cardResponse.json()) as {
         error?: string;
-        cardPaths?: ScoreCardPaths;
+        cardUrl?: string;
       };
 
-      if (!cardResponse.ok || !cardPayload.cardPaths) {
+      if (!cardResponse.ok || !cardPayload.cardUrl) {
         throw new Error(cardPayload.error ?? "Failed to generate score card.");
       }
 
-      setScoreCardPaths(cardPayload.cardPaths);
+      setScoreCardUrl(cardPayload.cardUrl);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Tilt Error.");
     } finally {
@@ -345,13 +354,64 @@ export function QuizExperience({
     }
   }
 
-  function handleLinkedInShare() {
-    if (!linkedinShareUrl) {
+  async function handleDownloadScoreCard() {
+    if (!scoreCardUrl) {
       toast.error("Score card is still generating.");
       return;
     }
 
+    const link = document.createElement("a");
+    link.href = scoreCardUrl;
+    link.download = scoreCardFileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    toast.success("Score card downloaded");
+  }
+
+  async function handleNativeShareCard() {
+    if (!scoreCardUrl || typeof navigator === "undefined" || typeof navigator.share !== "function") {
+      toast.error("Native sharing is not available right now.");
+      return;
+    }
+
+    try {
+      const file = await dataUrlToFile(scoreCardUrl, scoreCardFileName);
+      await navigator.share({
+        title: "Rapyder Arcade Score Card",
+        text: shareCopy,
+        files: [file],
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+
+      toast.error("Unable to open native share sheet.");
+    }
+  }
+
+  async function handleLinkedInShare() {
+    if (!linkedinShareUrl || !scoreCardUrl) {
+      toast.error("Score card is still generating.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareCopy);
+    } catch {
+      // Non-blocking.
+    }
+
+    const link = document.createElement("a");
+    link.href = scoreCardUrl;
+    link.download = scoreCardFileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
     window.open(linkedinShareUrl, "_blank", "noopener,noreferrer");
+    toast.success("Caption copied and card downloaded. Upload the image in LinkedIn composer.");
   }
 
   function resetQuizWithFreshQuestions() {
@@ -361,7 +421,7 @@ export function QuizExperience({
     setAnswers(Array(nextQuestions.length).fill(-1));
     setStep("quiz");
     setRewardState(null);
-    setScoreCardPaths(null);
+    setScoreCardUrl(null);
   }
 
   if (rewardState) {
@@ -378,52 +438,19 @@ export function QuizExperience({
           <div className="panel-sub-glass rounded-[28px] border border-white/10 p-5 text-left sm:p-6">
             <p className="text-xs uppercase tracking-[0.28em] text-white/45">Result Cards</p>
             <div className="mt-4 overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(255,176,0,0.22),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(252,48,48,0.26),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.06),rgba(0,0,0,0.16)),#050505] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.55)] sm:p-6">
-              {scoreCardPaths ? (
+              {scoreCardUrl ? (
                 <div className="reward-card-stage">
                   <div className="reward-card-grid">
-                    <div className="reward-card-frame reward-card-float">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <span className="text-[0.65rem] uppercase tracking-[0.26em] text-white/55">
-                          Template 1
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <a
-                            href={scoreCardPaths.template1}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[0.65rem] uppercase tracking-[0.22em] text-[#ffb000]"
-                          >
-                            Open
-                          </a>
-                          <a
-                            href={scoreCardPaths.template1}
-                            download
-                            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[0.6rem] uppercase tracking-[0.22em] text-white transition hover:bg-white/10"
-                          >
-                            Download
-                          </a>
-                        </div>
-                      </div>
-                      <div className="overflow-hidden rounded-[20px] border border-white/10 bg-black/40 p-3">
-                        <Image
-                          src={scoreCardPaths.template1}
-                          alt="Generated Rapyder score card template 1"
-                          width={768}
-                          height={1408}
-                          className="h-auto w-full rounded-[16px] object-cover"
-                          unoptimized
-                        />
-                      </div>
-                    </div>
-
-                    <div className="reward-card-frame reward-card-float-alt">
+                    <div className="reward-card-frame reward-card-float reward-card-reveal">
+                      <div className="reward-card-orbit" />
+                      <div className="reward-card-shine" />
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <span className="text-[0.65rem] uppercase tracking-[0.26em] text-white/55">
                           Template 2
                         </span>
                         <div className="flex items-center gap-2">
                           <a
-                            href={scoreCardPaths.template2}
+                            href={scoreCardUrl}
                             target="_blank"
                             rel="noreferrer"
                             className="text-[0.65rem] uppercase tracking-[0.22em] text-[#ffb000]"
@@ -431,8 +458,8 @@ export function QuizExperience({
                             Open
                           </a>
                           <a
-                            href={scoreCardPaths.template2}
-                            download
+                            href={scoreCardUrl}
+                            download={scoreCardFileName}
                             className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[0.6rem] uppercase tracking-[0.22em] text-white transition hover:bg-white/10"
                           >
                             Download
@@ -440,14 +467,25 @@ export function QuizExperience({
                         </div>
                       </div>
                       <div className="overflow-hidden rounded-[20px] border border-white/10 bg-black/40 p-3">
-                        <Image
-                          src={scoreCardPaths.template2}
+                        <img
+                          src={scoreCardUrl}
                           alt="Generated Rapyder score card template 2"
-                          width={768}
-                          height={1408}
-                          className="h-auto w-full rounded-[16px] object-cover"
-                          unoptimized
+                          className="h-auto w-full rounded-[16px] object-cover reward-card-image"
                         />
+                      </div>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-white/10 bg-black/30 p-3 text-center">
+                          <p className="text-[0.62rem] uppercase tracking-[0.24em] text-white/45">Player</p>
+                          <p className="mt-2 text-sm font-semibold text-white">{initialName}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-black/30 p-3 text-center">
+                          <p className="text-[0.62rem] uppercase tracking-[0.24em] text-white/45">Company</p>
+                          <p className="mt-2 text-sm font-semibold text-white">{initialCompanyName}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-black/30 p-3 text-center">
+                          <p className="text-[0.62rem] uppercase tracking-[0.24em] text-white/45">Saved Score</p>
+                          <p className="mt-2 text-sm font-semibold text-white">{rewardState.bestCorrectAnswers}/10</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -455,7 +493,7 @@ export function QuizExperience({
               ) : (
                 <div className="rounded-[24px] border border-white/10 bg-black/30 px-5 py-12 text-center">
                   <p className="text-sm uppercase tracking-[0.24em] text-white/45">
-                    {generatingCard ? "Generating both score cards" : "Score cards pending"}
+                    {generatingCard ? "Generating score card" : "Score card pending"}
                   </p>
                 </div>
               )}
@@ -463,8 +501,14 @@ export function QuizExperience({
           </div>
 
           <div className="panel-sub-glass rounded-[28px] border border-white/10 p-5 text-left sm:p-6">
-            <p className="text-xs uppercase tracking-[0.28em] text-white/45">Claim Instructions</p>
+            <p className="text-xs uppercase tracking-[0.28em] text-white/45">Results Console</p>
             <div className="mt-4 space-y-4">
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                <p className="text-[0.7rem] uppercase tracking-[0.22em] text-white/40">Participant</p>
+                <p className="mt-2 text-lg font-semibold text-white">{initialName}</p>
+                <p className="mt-1 text-sm text-white/60">{initialCompanyName}</p>
+                <p className="mt-1 text-sm text-white/45">{userEmail}</p>
+              </div>
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
                 <p className="text-[0.7rem] uppercase tracking-[0.22em] text-white/40">Rank Achieved</p>
                 <p className="mt-2 text-2xl font-semibold text-white">#{rewardState.rank}</p>
@@ -492,7 +536,23 @@ export function QuizExperience({
                 disabled={!linkedinShareUrl}
                 className="button-glass-secondary w-full"
               >
-                Share Both On LinkedIn
+                Open LinkedIn Post
+              </button>
+              <button
+                type="button"
+                onClick={handleNativeShareCard}
+                disabled={!scoreCardUrl}
+                className="button-glass-secondary w-full"
+              >
+                Share Card
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadScoreCard}
+                disabled={!scoreCardUrl}
+                className="button-glass-secondary w-full"
+              >
+                Download Card
               </button>
               <button
                 type="button"
@@ -501,6 +561,9 @@ export function QuizExperience({
               >
                 Copy LinkedIn Caption
               </button>
+              <p className="text-xs leading-6 text-white/50">
+                LinkedIn does not let this app directly auto-upload an image into the post composer without LinkedIn API auth. This flow opens LinkedIn, copies the caption, and downloads the card automatically.
+              </p>
               <button
                 type="button"
                 onClick={() => {
