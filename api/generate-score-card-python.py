@@ -46,4 +46,3 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         return json_response(self, 405, {"error": "Method Not Allowed"})
-
