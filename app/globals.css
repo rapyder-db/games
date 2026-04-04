@@ -555,7 +555,7 @@ body {
 .reward-card-stage {
   position: relative;
   border-radius: 24px;
-  padding: 18px;
+  padding: 14px;
   background:
     radial-gradient(circle at top, rgba(255, 176, 0, 0.18), transparent 28%),
     radial-gradient(circle at bottom left, rgba(252, 48, 48, 0.18), transparent 34%),
@@ -565,7 +565,7 @@ body {
 
 .reward-card-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: start;
 }
@@ -574,7 +574,7 @@ body {
   position: relative;
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 16px;
+  padding: 12px;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
     rgba(7, 7, 8, 0.82);
@@ -602,7 +602,30 @@ body {
 }
 
 .reward-card-image {
+  display: block;
+  width: 100%;
   animation: rewardCardImagePop 0.8s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.reward-card-preview {
+  width: 100%;
+}
+
+.results-shell {
+  width: min(100%, 100%);
+}
+
+.results-layout {
+  align-items: stretch;
+}
+
+.results-card-panel,
+.results-console {
+  min-width: 0;
+}
+
+.results-actions {
+  width: 100%;
 }
 
 .reward-card-orbit {
@@ -845,6 +868,14 @@ body {
     left: 10%;
     width: clamp(110px, 22vw, 170px);
   }
+
+  .results-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .results-console {
+    order: 2;
+  }
 }
 
 @media (max-width: 768px) {
@@ -859,6 +890,19 @@ body {
   }
 
   .reward-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reward-card-stage {
+    padding: 10px;
+  }
+
+  .reward-card-frame {
+    padding: 10px;
+    border-radius: 20px;
+  }
+
+  .results-meta-grid {
     grid-template-columns: 1fr;
   }
 
@@ -934,6 +978,38 @@ body {
     top: 5%;
     left: 7%;
     width: 108px;
+  }
+
+  .results-shell {
+    border-radius: 24px;
+  }
+
+  .results-layout {
+    gap: 14px;
+  }
+
+  .results-card-panel,
+  .results-console {
+    border-radius: 24px;
+  }
+
+  .results-actions {
+    gap: 10px;
+  }
+
+  .results-actions .button-glass-primary,
+  .results-actions .button-glass-secondary {
+    min-height: 48px;
+    padding-inline: 16px;
+    font-size: 0.8rem;
+  }
+
+  .reward-card-preview {
+    border-radius: 16px;
+  }
+
+  .reward-card-image {
+    border-radius: 12px;
   }
 }
 

@@ -1,11 +1,8 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-
-const execFileAsync = promisify(execFile);
 
 export const runtime = "nodejs";
 
@@ -15,8 +12,64 @@ const generateScoreCardSchema = z.object({
   score: z.number().int().min(0).max(10),
 });
 
-function toDataUrl(fileBuffer: Buffer) {
-  return `data:image/png;base64,${fileBuffer.toString("base64")}`;
+function normalizeScore(score: number) {
+  return score <= 10 ? score * 10 : score;
+}
+
+function displayScore(score: number) {
+  const normalized = normalizeScore(score);
+  return normalized % 10 === 0 ? `${normalized / 10}/10` : `${normalized}/100`;
+}
+
+function titleFor(score: number) {
+  const normalized = normalizeScore(score);
+
+  if (normalized >= 95) return "CLOUD QUIZ CHAMPION";
+  if (normalized >= 85) return "RAPYDER ELITE";
+  if (normalized >= 75) return "CLOUD STRATEGIST";
+  if (normalized >= 65) return "DATA RUNNER";
+  return "ARCADE CONTENDER";
+}
+
+function escapeXml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function fitFontSize(text: string, maxWidth: number, maxSize: number, minSize: number, widthFactor: number) {
+  let size = maxSize;
+
+  while (size > minSize) {
+    const estimatedWidth = text.length * size * widthFactor;
+    if (estimatedWidth <= maxWidth) {
+      return size;
+    }
+    size -= 1;
+  }
+
+  return minSize;
+}
+
+async function fileToDataUrl(filePath: string) {
+  const extension = path.extname(filePath).toLowerCase();
+  const buffer = await readFile(filePath);
+
+  if (extension === ".svg") {
+    return `data:image/svg+xml;utf8,${encodeURIComponent(buffer.toString("utf8"))}`;
+  }
+
+  const mimeType =
+    extension === ".jpg" || extension === ".jpeg"
+      ? "image/jpeg"
+      : extension === ".png"
+        ? "image/png"
+        : "application/octet-stream";
+
+  return `data:${mimeType};base64,${buffer.toString("base64")}`;
 }
 
 export async function POST(request: Request) {
@@ -30,64 +83,57 @@ export async function POST(request: Request) {
     );
   }
 
-  const { name, companyName, score } = parsed.data;
-
   try {
-    if (process.env.VERCEL) {
-      const forwardUrl = new URL("/api/generate-score-card-python", request.url);
-      const response = await fetch(forwardUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name, companyName, score }),
-        cache: "no-store",
-      });
-
-      const payload = await response.json();
-
-      if (!response.ok) {
-        return NextResponse.json(
-          { error: payload?.error ?? "Failed to generate score card" },
-          { status: response.status },
-        );
-      }
-
-      return NextResponse.json(payload);
-    }
-
+    const { name, companyName, score } = parsed.data;
     const root = process.cwd();
-    const scriptPath = path.join(root, "scripts", "generate_reward_card.py");
-    const outputDir = path.join(root, "public", "generated-score-cards");
-    const tempFilePath = path.join(
-      outputDir,
-      `local-score-card-${Date.now()}-${Math.random().toString(36).slice(2)}.png`,
-    );
+    const backgroundUrl = await fileToDataUrl(path.join(root, "public", "Template_Card 2.jpeg"));
+    const logoUrl = await fileToDataUrl(path.join(root, "public", "rapyder-logo-clean.png"));
 
-    await execFileAsync(
-      "python",
-      [
-        scriptPath,
-        "--template",
-        "2",
-        "--name",
-        name,
-        "--company",
-        companyName,
-        "--score",
-        String(score),
-        "--out",
-        tempFilePath,
-      ],
-      { cwd: root },
-    );
+    const safeName = escapeXml(name.trim().toUpperCase());
+    const safeCompany = escapeXml(companyName.trim().toUpperCase());
+    const safeTitle = escapeXml(titleFor(score));
+    const safeScore = escapeXml(displayScore(score));
 
-    const { readFile, unlink } = await import("node:fs/promises");
-    const fileBuffer = await readFile(tempFilePath);
-    await unlink(tempFilePath);
+    const titleFontSize = fitFontSize(safeTitle, 420, 30, 18, 0.62);
+    const nameFontSize = fitFontSize(safeName, 560, 52, 28, 0.58);
+    const companyFontSize = fitFontSize(safeCompany, 340, 22, 12, 0.58);
+
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="1536" height="2816" viewBox="0 0 768 1408">
+        <defs>
+          <filter id="scoreGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="14" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <image href="${backgroundUrl}" width="768" height="1408" />
+        <image href="${logoUrl}" x="141" y="64" width="486" height="140" preserveAspectRatio="xMidYMid meet" />
+
+        <g font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle">
+          <text x="386" y="1212" font-size="${titleFontSize}" fill="#5a2600">${safeTitle}</text>
+          <text x="384" y="1208" font-size="${titleFontSize}" fill="#FFD978">${safeTitle}</text>
+
+          <text x="386" y="704" font-size="${nameFontSize}" fill="#5a2600">${safeName}</text>
+          <text x="384" y="700" font-size="${nameFontSize}" fill="#FFD978">${safeName}</text>
+
+          <text x="386" y="806" font-size="${companyFontSize}" fill="#5a2600">${safeCompany}</text>
+          <text x="384" y="802" font-size="${companyFontSize}" fill="#FFD978">${safeCompany}</text>
+
+          <text x="386" y="928" font-size="24" fill="#2f1400">SCORE</text>
+          <text x="384" y="924" font-size="24" fill="#F7EBC7">SCORE</text>
+
+          <text x="388" y="1035" font-size="76" fill="#FF915F" filter="url(#scoreGlow)">${safeScore}</text>
+          <text x="388" y="1035" font-size="76" fill="#FFD76B">${safeScore}</text>
+        </g>
+      </svg>
+    `.trim();
 
     return NextResponse.json({
-      cardUrl: toDataUrl(fileBuffer),
+      cardUrl: `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`,
     });
   } catch (error) {
     return NextResponse.json(

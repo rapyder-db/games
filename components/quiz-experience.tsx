@@ -75,6 +75,32 @@ async function dataUrlToFile(dataUrl: string, fileName: string) {
   return new File([blob], fileName, { type: blob.type || "image/png" });
 }
 
+async function svgDataUrlToPngDataUrl(svgDataUrl: string) {
+  const image = new Image();
+  image.decoding = "async";
+
+  const loaded = new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Failed to render score card image."));
+  });
+
+  image.src = svgDataUrl;
+  await loaded;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth || 1536;
+  canvas.height = image.naturalHeight || 2816;
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Canvas is not available for PNG export.");
+  }
+
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/png");
+}
+
 export function QuizExperience({
   userEmail,
   initialName,
@@ -332,7 +358,8 @@ export function QuizExperience({
         throw new Error(cardPayload.error ?? "Failed to generate score card.");
       }
 
-      setScoreCardUrl(cardPayload.cardUrl);
+      const pngCardUrl = await svgDataUrlToPngDataUrl(cardPayload.cardUrl);
+      setScoreCardUrl(pngCardUrl);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Tilt Error.");
     } finally {
@@ -426,7 +453,7 @@ export function QuizExperience({
 
   if (rewardState) {
     return (
-      <section className="panel-glass mx-auto max-w-7xl p-5 text-center relative sm:p-8 lg:p-12">
+      <section className="panel-glass results-shell mx-auto max-w-7xl p-4 text-center relative sm:p-6 lg:p-10">
         <div className="dot-matrix-screen mb-6 px-4 py-5 sm:px-6 sm:py-6">
           <p className="dot-matrix-text-red mb-3 text-sm sm:text-lg">REWARD RESULT</p>
           <h1 className="text-3xl sm:text-5xl dot-matrix-text">
@@ -434,46 +461,46 @@ export function QuizExperience({
           </h1>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.45fr_0.75fr] lg:items-start">
-          <div className="panel-sub-glass rounded-[28px] border border-white/10 p-5 text-left sm:p-6">
+        <div className="results-layout grid gap-4 lg:grid-cols-[1.45fr_0.75fr] lg:items-start lg:gap-6">
+          <div className="panel-sub-glass results-card-panel rounded-[28px] border border-white/10 p-4 text-left sm:p-5 lg:p-6">
             <p className="text-xs uppercase tracking-[0.28em] text-white/45">Result Cards</p>
-            <div className="mt-4 overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(255,176,0,0.22),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(252,48,48,0.26),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.06),rgba(0,0,0,0.16)),#050505] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.55)] sm:p-6">
+            <div className="mt-3 overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(255,176,0,0.22),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(252,48,48,0.26),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.06),rgba(0,0,0,0.16)),#050505] p-3 shadow-[0_24px_60px_rgba(0,0,0,0.55)] sm:mt-4 sm:p-5 lg:p-6">
               {scoreCardUrl ? (
                 <div className="reward-card-stage">
                   <div className="reward-card-grid">
                     <div className="reward-card-frame reward-card-float reward-card-reveal">
                       <div className="reward-card-orbit" />
                       <div className="reward-card-shine" />
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <span className="text-[0.65rem] uppercase tracking-[0.26em] text-white/55">
+                      <div className="mb-3 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <span className="text-[0.62rem] uppercase tracking-[0.24em] text-white/55 sm:text-[0.65rem] sm:tracking-[0.26em]">
                           Template 2
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
                           <a
                             href={scoreCardUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-[0.65rem] uppercase tracking-[0.22em] text-[#ffb000]"
+                            className="text-[0.62rem] uppercase tracking-[0.18em] text-[#ffb000] sm:text-[0.65rem] sm:tracking-[0.22em]"
                           >
                             Open
                           </a>
                           <a
                             href={scoreCardUrl}
                             download={scoreCardFileName}
-                            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[0.6rem] uppercase tracking-[0.22em] text-white transition hover:bg-white/10"
+                            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[0.58rem] uppercase tracking-[0.18em] text-white transition hover:bg-white/10 sm:text-[0.6rem] sm:tracking-[0.22em]"
                           >
                             Download
                           </a>
                         </div>
                       </div>
-                      <div className="overflow-hidden rounded-[20px] border border-white/10 bg-black/40 p-3">
+                      <div className="reward-card-preview overflow-hidden rounded-[20px] border border-white/10 bg-black/40 p-2 sm:p-3">
                         <img
                           src={scoreCardUrl}
                           alt="Generated Rapyder score card template 2"
                           className="h-auto w-full rounded-[16px] object-cover reward-card-image"
                         />
                       </div>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      <div className="results-meta-grid mt-4 grid gap-3 sm:grid-cols-3">
                         <div className="rounded-2xl border border-white/10 bg-black/30 p-3 text-center">
                           <p className="text-[0.62rem] uppercase tracking-[0.24em] text-white/45">Player</p>
                           <p className="mt-2 text-sm font-semibold text-white">{initialName}</p>
@@ -500,7 +527,7 @@ export function QuizExperience({
             </div>
           </div>
 
-          <div className="panel-sub-glass rounded-[28px] border border-white/10 p-5 text-left sm:p-6">
+          <div className="panel-sub-glass results-console rounded-[28px] border border-white/10 p-4 text-left sm:p-5 lg:p-6">
             <p className="text-xs uppercase tracking-[0.28em] text-white/45">Results Console</p>
             <div className="mt-4 space-y-4">
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
@@ -529,7 +556,7 @@ export function QuizExperience({
               </div>
             </div>
 
-            <div className="mt-6 flex flex-col gap-3">
+            <div className="results-actions mt-6 flex flex-col gap-3">
               <button
                 type="button"
                 onClick={handleLinkedInShare}
@@ -561,9 +588,6 @@ export function QuizExperience({
               >
                 Copy LinkedIn Caption
               </button>
-              <p className="text-xs leading-6 text-white/50">
-                LinkedIn does not let this app directly auto-upload an image into the post composer without LinkedIn API auth. This flow opens LinkedIn, copies the caption, and downloads the card automatically.
-              </p>
               <button
                 type="button"
                 onClick={() => {
