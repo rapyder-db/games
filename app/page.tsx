@@ -53,7 +53,7 @@ export default async function HomePage() {
                   loop
                   muted
                   playsInline
-                  preload="auto"
+                  preload="metadata"
                 >
                   <source src="/Smartwatch 3d.mp4" type="video/mp4" />
                 </video>

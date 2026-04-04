@@ -13,10 +13,6 @@ type LeaderboardLiveProps = {
   highlightPlayerId: string | null;
 };
 
-function formatScoreFast(score: number) {
-  return new Intl.NumberFormat().format(score);
-}
-
 export function LeaderboardLive({
   initialEntries,
   highlightPlayerId,

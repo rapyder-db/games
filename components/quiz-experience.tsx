@@ -244,10 +244,10 @@ export function QuizExperience({
 
   const scoreCardFileName = useMemo(() => {
     if (!rewardState) {
-      return "rapyder-score-card.png";
+      return "score-card.png";
     }
 
-    return `rapyder-template-2-${slugify(initialName)}-${rewardState.bestCorrectAnswers}-of-10.png`;
+    return `${slugify(initialName)}-${rewardState.bestCorrectAnswers}-of-10-score-card.png`;
   }, [initialName, rewardState]);
 
   function triggerRipple(event: MouseEvent<HTMLButtonElement>) {
@@ -424,6 +424,22 @@ export function QuizExperience({
       return;
     }
 
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        const file = await dataUrlToFile(scoreCardUrl, scoreCardFileName);
+        await navigator.share({
+          title: "Rapyder Arcade Score Card",
+          text: shareCopy,
+          files: [file],
+        });
+        return;
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
     try {
       await navigator.clipboard.writeText(shareCopy);
     } catch {
@@ -563,7 +579,7 @@ export function QuizExperience({
                 disabled={!linkedinShareUrl}
                 className="button-glass-secondary w-full"
               >
-                Open LinkedIn Post
+                Post On LinkedIn
               </button>
               <button
                 type="button"
@@ -587,16 +603,6 @@ export function QuizExperience({
                 className="button-glass-secondary w-full"
               >
                 Copy LinkedIn Caption
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  router.push(`/leaderboard?highlight=${playerId}`);
-                  router.refresh();
-                }}
-                className="button-glass-primary w-full"
-              >
-                View Leaderboard
               </button>
               <button
                 type="button"
