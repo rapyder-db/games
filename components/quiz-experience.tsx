@@ -22,6 +22,7 @@ type RewardState = {
   bestScore: number;
   correctAnswers: number;
   bestCorrectAnswers: number;
+  longestStreak: number;
   rewardUnlocked: boolean;
 };
 
@@ -49,17 +50,33 @@ function getPlayerTitle(rewardState: RewardState) {
   return "Arcade Contender";
 }
 
-const FACTS = [
-  "Rapyder’s GenAI‑AWS collaboration drove 60% more new deals in one year.",
-  "Active customer accounts grew 51% year‑over‑year with GenAI‑AWS programs.",
-  "Rapyder is among only three Indian firms with AWS Generative AI Competency.",
-  "Achieved AWS Premier Tier Partner status, combining it with GenAI Competency.",
-  "Delivered 35+ Generative AI proofs of concept under AWS Strategic Collaboration.",
-  "Launched 20+ production‑ready GenAI solutions across industries on AWS.",
-  "AWS‑backed Industry CoE shipped 21 cloud and GenAI solutions, four FTR‑ready.",
-  "Workforce expansion: doubling from 280 to 600 by end‑2025 for GenAI growth.",
-  "Engineers earned 150 AWS certifications in one year to power GenAI programs.",
-  "Trusted by 500+ customers for GenAI‑driven cloud transformation.",
+function getStreakLabel(streak: number) {
+  if (streak >= 7) {
+    return "Hot Streak";
+  }
+
+  if (streak >= 4) {
+    return "Momentum Run";
+  }
+
+  if (streak >= 2) {
+    return "Combo Builder";
+  }
+
+  return "Fresh Run";
+}
+
+const EVENT_FACTS = [
+  "One of only 3 companies in all of India trusted by AWS with the Generative AI Competency.",
+  "Rapyder's GenAI VoiceBot on Amazon Nova Sonic is already live - answering real customers for Fibe and Stellaps.",
+  "GenAI didn't just change Rapyder's product - it drove 60% more deals in a single year.",
+  "500+ enterprises chose Rapyder to lead their GenAI transformation. That's not a pilot - that's a movement.",
+  "35 GenAI proofs of concept built. 20+ shipped to production. Rapyder doesn't just demo AI - it deploys it.",
+  "150 AWS certifications earned in one year - because GenAI expertise isn't hired, it's built.",
+  "From BFSI to healthcare to manufacturing - Rapyder's ICoE ships GenAI for the industries that can't afford to get it wrong.",
+  "AWS Premier Tier + GenAI Competency: Rapyder holds both - a combination fewer than a handful of Indian firms can claim.",
+  "Snapdeal. Fibe. Stellaps. 500+ others. India's enterprises don't experiment with Rapyder - they scale with it.",
+  "Rapyder's GenAI is GDPR, PCI DSS, and KYC/AML compliant - built for industries where one AI mistake costs millions.",
 ];
 
 function slugify(value: string) {
@@ -89,7 +106,7 @@ async function svgDataUrlToPngDataUrl(svgDataUrl: string) {
 
   const canvas = document.createElement("canvas");
   canvas.width = image.naturalWidth || 1536;
-  canvas.height = image.naturalHeight || 2816;
+  canvas.height = image.naturalHeight || 2752;
 
   const context = canvas.getContext("2d");
 
@@ -210,7 +227,7 @@ export function QuizExperience({
 
   const currentQuestion = questions[currentIndex];
   const selectedAnswer = answers[currentIndex];
-  const factForQuestion = FACTS[currentIndex % FACTS.length];
+  const factForQuestion = EVENT_FACTS[currentIndex % EVENT_FACTS.length];
   const hasSelectedOption = selectedAnswer !== -1;
 
   const confettiPieces = useMemo(
@@ -254,18 +271,38 @@ export function QuizExperience({
     [answers, questions],
   );
 
+  const longestStreak = useMemo(() => {
+    let currentStreak = 0;
+    let bestStreak = 0;
+
+    answers.forEach((answer, index) => {
+      if (answer === questions[index].correctIndex) {
+        currentStreak += 1;
+        bestStreak = Math.max(bestStreak, currentStreak);
+      } else {
+        currentStreak = 0;
+      }
+    });
+
+    return bestStreak;
+  }, [answers, questions]);
+
   const shareCopy = useMemo(() => {
     if (!rewardState) {
       return "";
     }
 
+    const playerTitle = getPlayerTitle(rewardState);
+
     return [
-      `I scored ${rewardState.bestCorrectAnswers}/10 in the Rapyder Arcade Challenge at rapyder.com.`,
-      `${initialName} | ${getPlayerTitle(rewardState)}`,
-      `Rank #${rewardState.rank}`,
-      "My Rapyder result card is ready.",
-      "Think you can beat my score?",
-      "#rapyder",
+      `I scored ${rewardState.bestCorrectAnswers}/10 in the Rapyder Arcade Challenge.`,
+      `${initialName} | ${playerTitle} | Rank #${rewardState.rank}`,
+      `Best streak: ${rewardState.longestStreak} (${getStreakLabel(rewardState.longestStreak)})`,
+      rewardState.rewardUnlocked
+        ? "Reward unlocked at the Rapyder event desk."
+        : "Back to the cabinet for one more run.",
+      "Think you can beat my score at the Rapyder booth?",
+      "#Rapyder #AWS #GenAI #CloudTransformation",
     ].join("\n");
   }, [initialName, rewardState]);
 
@@ -315,7 +352,7 @@ export function QuizExperience({
 
   function handleNext() {
     if (selectedAnswer === -1) {
-      toast.error("FLIPPER INACTIVE: Selection Required");
+      toast.error("Choose an answer to continue.");
       playSfx("error");
       return;
     }
@@ -360,10 +397,10 @@ export function QuizExperience({
       };
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Failed to log initials.");
+        throw new Error(payload.error ?? "Failed to save score.");
       }
 
-      toast.success("SCORE LOGGED!");
+      toast.success("Score saved.");
       playSfx("success");
       const nextRewardState = {
         rank: payload.rank,
@@ -371,6 +408,7 @@ export function QuizExperience({
         bestScore: payload.bestScore,
         correctAnswers: payload.correctAnswers,
         bestCorrectAnswers: Math.round(payload.bestScore / 10),
+        longestStreak,
         rewardUnlocked: payload.bestScore >= 70,
       };
       setRewardState(nextRewardState);
@@ -402,7 +440,7 @@ export function QuizExperience({
       const pngCardUrl = await svgDataUrlToPngDataUrl(cardPayload.cardUrl);
       setScoreCardUrl(pngCardUrl);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Tilt Error.");
+      toast.error(error instanceof Error ? error.message : "Could not save score.");
     } finally {
       setGeneratingCard(false);
       setSubmitting(false);
@@ -515,7 +553,7 @@ export function QuizExperience({
         <div className="dot-matrix-screen mb-6 px-4 py-5 sm:px-6 sm:py-6">
           <p className="dot-matrix-text-red mb-3 text-sm sm:text-lg">REWARD RESULT</p>
           <h1 className="text-3xl sm:text-5xl dot-matrix-text">
-            {rewardState.rewardUnlocked ? "UNLOCK CONFIRMED" : "REWARD LOCKED"}
+            {rewardState.rewardUnlocked ? "REWARD UNLOCKED" : "REPLAY TO UNLOCK"}
           </h1>
         </div>
 
@@ -599,6 +637,13 @@ export function QuizExperience({
                 <p className="mt-2 text-2xl font-semibold text-white">#{rewardState.rank}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                <p className="text-[0.7rem] uppercase tracking-[0.22em] text-white/40">Player Title</p>
+                <p className="mt-2 text-lg font-semibold text-white">{getPlayerTitle(rewardState)}</p>
+                <p className="mt-1 text-sm text-white/55">
+                  {getStreakLabel(rewardState.longestStreak)}: {rewardState.longestStreak}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
                 <p className="text-[0.7rem] uppercase tracking-[0.22em] text-white/40">Reward Status</p>
                 <p className={`mt-2 text-lg font-semibold ${rewardState.rewardUnlocked ? "text-[#62ff9b]" : "text-[#ffb000]"}`}>
                   {rewardState.rewardUnlocked ? "Reward unlocked" : "Reward not unlocked"}
@@ -608,8 +653,8 @@ export function QuizExperience({
                 <p className="text-[0.7rem] uppercase tracking-[0.22em] text-white/40">How To Claim</p>
                 <p className="mt-2 text-sm text-white/80">
                   {rewardState.rewardUnlocked
-                    ? "Take this screen to the event counter or Rapyder team desk. Verify with your name and email, then collect your reward."
-                    : "Improve your score, then return to this screen. The unlock condition is based on your saved best score."}
+                    ? "Take this screen to the event counter or Rapyder team desk. If download or sharing fails, open the card and take a screenshot; the team can verify your result on the leaderboard."
+                    : "Improve your score, then return to this screen. If download or sharing fails, open the card and take a screenshot; the team can verify your result on the leaderboard."}
                 </p>
               </div>
             </div>
@@ -621,7 +666,7 @@ export function QuizExperience({
                 disabled={!linkedinShareUrl}
                 className="button-glass-secondary w-full"
               >
-                Post On LinkedIn
+                Post on LinkedIn
               </button>
               <button
                 type="button"
@@ -676,7 +721,7 @@ export function QuizExperience({
         <div className="dot-matrix-screen mb-8 px-4 py-5 led-flicker sm:mb-12 sm:px-8 sm:py-6">
           <p className="dot-matrix-text-red mb-3 text-lg sm:mb-4 sm:text-2xl">MATCH OVER</p>
           <h1 className="text-3xl sm:text-5xl lg:text-6xl dot-matrix-text">
-            JACKPOT CALCULATION
+            SCORE READY
           </h1>
         </div>
         
@@ -686,8 +731,8 @@ export function QuizExperience({
             <p className="text-3xl text-neon-amber font-mono drop-shadow-[0_0_15px_#ffb000] led-flicker sm:text-4xl">{String(correctAnswers).padStart(2, '0')}/10</p>
           </div>
           <div className="dot-matrix-screen p-4 py-6 sm:p-6 sm:py-8">
-            <p className="text-sm font-mono text-[#ffb000]/60 uppercase tracking-widest mb-4">Targets Hit</p>
-            <p className="text-3xl text-neon-amber font-mono drop-shadow-[0_0_15px_#ffb000] led-flicker sm:text-4xl">{String(correctAnswers).padStart(2, '0')}/10</p>
+            <p className="text-sm font-mono text-[#ffb000]/60 uppercase tracking-widest mb-4">Best Streak</p>
+            <p className="text-3xl text-neon-amber font-mono drop-shadow-[0_0_15px_#ffb000] led-flicker sm:text-4xl">{String(longestStreak).padStart(2, '0')}/10</p>
           </div>
           <div className="dot-matrix-screen p-4 py-6 sm:p-6 sm:py-8">
             <p className="text-sm font-mono text-[#ffb000]/60 uppercase tracking-widest mb-4">High Score</p>
@@ -703,7 +748,7 @@ export function QuizExperience({
             className="pinball-bumper w-full sm:w-auto overflow-hidden group"
           >
             <div className="bg-[#111] px-12 py-4 rounded-[14px]">
-              <span className="dot-matrix-text-red text-xl group-hover:text-white transition-colors">{submitting ? "LOGGING..." : "SAVE INITIALS"}</span>
+              <span className="dot-matrix-text-red text-xl group-hover:text-white transition-colors">{submitting ? "SAVING..." : "SAVE SCORE"}</span>
             </div>
           </button>
           
@@ -715,7 +760,7 @@ export function QuizExperience({
             className="pinball-bumper w-full sm:w-auto overflow-hidden group"
           >
             <div className="bg-[#222] px-8 py-4 rounded-[14px]">
-              <span className="dot-matrix-text text-xl group-hover:text-white transition-colors">INSERT COIN</span>
+              <span className="dot-matrix-text text-xl group-hover:text-white transition-colors">PLAY AGAIN</span>
             </div>
           </button>
         </div>
@@ -791,7 +836,7 @@ export function QuizExperience({
           >
             <div className="rounded-[12px] border-b-4 border-[#666] bg-chrome px-6 py-3 sm:px-10 sm:py-4">
               <span className="font-mono text-base font-black text-[#111] drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] group-active:translate-y-[2px] sm:text-xl">
-                {currentIndex === questions.length - 1 ? "LOCK MULTIBALL" : "HIT FLIPPER"}
+                {currentIndex === questions.length - 1 ? "FINISH QUIZ" : "NEXT QUESTION"}
               </span>
             </div>
           </button>

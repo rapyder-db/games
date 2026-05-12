@@ -24,6 +24,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const submittedQuestionIds = parsed.data.answers.map((answer) => answer.questionId);
+
+  if (new Set(submittedQuestionIds).size !== submittedQuestionIds.length) {
+    return NextResponse.json(
+      { error: "Duplicate questions are not accepted." },
+      { status: 400 },
+    );
+  }
+
   const admin = getSupabaseAdminClient();
   const questionMap = new Map(quizQuestions.map((question) => [question.id, question]));
   const score = parsed.data.answers.reduce((total, answer) => {
@@ -52,17 +61,20 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: existingScore, error: existingScoreError } = await admin
+  const { data: existingScores, error: existingScoreError } = await admin
     .from("scores")
     .select("id, score")
     .eq("player_id", playerId)
     .eq("quiz_version", QUIZ_VERSION)
-    .maybeSingle();
+    .order("score", { ascending: false })
+    .order("updated_at", { ascending: true })
+    .limit(1);
 
   if (existingScoreError) {
     return NextResponse.json({ error: existingScoreError.message }, { status: 500 });
   }
 
+  const existingScore = existingScores?.[0] ?? null;
   let bestScore = existingScore?.score ?? score;
   let updated = false;
 
@@ -74,11 +86,45 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error.code === "23505") {
+        const { data: latestScores, error: latestScoreError } = await admin
+          .from("scores")
+          .select("id, score")
+          .eq("player_id", playerId)
+          .eq("quiz_version", QUIZ_VERSION)
+          .order("score", { ascending: false })
+          .order("updated_at", { ascending: true })
+          .limit(1);
+
+        if (latestScoreError) {
+          return NextResponse.json({ error: latestScoreError.message }, { status: 500 });
+        }
+
+        const latestScore = latestScores?.[0] ?? null;
+
+        if (latestScore && score > latestScore.score) {
+          const { error: updateAfterConflictError } = await admin
+            .from("scores")
+            .update({ score })
+            .eq("id", latestScore.id);
+
+          if (updateAfterConflictError) {
+            return NextResponse.json({ error: updateAfterConflictError.message }, { status: 500 });
+          }
+
+          bestScore = score;
+          updated = true;
+        } else {
+          bestScore = latestScore?.score ?? score;
+        }
+      } else {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    } else {
+      bestScore = score;
+      updated = true;
     }
 
-    bestScore = score;
-    updated = true;
   } else if (score > existingScore.score) {
     const { error } = await admin
       .from("scores")

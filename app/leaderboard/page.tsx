@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 type LeaderboardPageProps = {
   searchParams: Promise<{
     highlight?: string;
+    display?: string;
   }>;
 };
 
@@ -21,6 +22,7 @@ export default async function LeaderboardPage({
     <LeaderboardLive
       initialEntries={entries}
       highlightPlayerId={params.highlight ?? null}
+      displayMode={params.display === "1" || params.display === "true"}
     />
   );
 }

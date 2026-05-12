@@ -42,6 +42,25 @@ create index if not exists scores_player_id_idx
 create index if not exists scores_quiz_version_idx
   on public.scores(quiz_version);
 
+with ranked_scores as (
+  select
+    id,
+    row_number() over (
+      partition by player_id, quiz_version
+      order by score desc, updated_at asc, created_at asc, id asc
+    ) as score_rank
+  from public.scores
+)
+delete from public.scores
+where id in (
+  select id
+  from ranked_scores
+  where score_rank > 1
+);
+
+create unique index if not exists scores_player_quiz_version_unique_idx
+  on public.scores(player_id, quiz_version);
+
 drop trigger if exists players_set_updated_at on public.players;
 create trigger players_set_updated_at
 before update on public.players
@@ -70,6 +89,7 @@ create policy "Anyone can read scores"
 on public.scores for select using (true);
 
 create or replace view public.leaderboard_entries
+with (security_invoker = true)
 as
 select
   s.player_id,

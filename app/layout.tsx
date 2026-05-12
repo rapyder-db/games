@@ -23,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${fontSans.variable}`}>
-      <body className="font-sans text-chalk bg-ink antialiased">
+    <html lang="en" className={`${fontSans.variable}`} suppressHydrationWarning>
+      <body className="font-sans text-chalk bg-ink antialiased" suppressHydrationWarning>
         <div className="fixed inset-0 z-[-2] bg-black">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(252,48,48,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,176,0,0.14),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.78)),#000]" />
           <div className="arcade-background-grid absolute inset-0 opacity-60" />

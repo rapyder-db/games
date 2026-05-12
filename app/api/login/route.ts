@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
+import { isMissingEnvironmentVariableError } from "@/lib/env";
 import { setPlayerSession } from "@/lib/session";
 import { getSupabaseAdminClient } from "@/lib/supabaseServer";
 import { profileSchema } from "@/lib/validation";
-import { z } from "zod";
 
 const loginSchema = profileSchema.extend({
   email: z.string().email("Invalid email address"),
@@ -45,6 +46,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, playerId: player.id });
   } catch (error) {
     console.error(error);
+
+    if (isMissingEnvironmentVariableError(error)) {
+      return NextResponse.json(
+        {
+          error: `Server configuration missing: ${error.names.join(" or ")}`,
+        },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },

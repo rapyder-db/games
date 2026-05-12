@@ -5,9 +5,20 @@ import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { toast } from "sonner";
 
+import { BorderGlow } from "@/components/border-glow";
+
 type AuthPanelProps = {
   onLogin?: () => void;
 };
+
+async function readErrorMessage(response: Response) {
+  try {
+    const payload = (await response.json()) as { error?: string };
+    return payload.error;
+  } catch {
+    return response.statusText;
+  }
+}
 
 export function AuthPanel({ onLogin }: AuthPanelProps) {
   const router = useRouter();
@@ -22,33 +33,51 @@ export function AuthPanel({ onLogin }: AuthPanelProps) {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, companyName, email }),
-      });
-      
-      const payload = await response.json();
+      let response: Response;
+
+      try {
+        response = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, companyName, email }),
+          cache: "no-store",
+        });
+      } catch {
+        throw new Error("Could not reach the login service. Check the event network and reload the page.");
+      }
       
       if (!response.ok) {
-        throw new Error(payload.error || "Authentication Error");
+        throw new Error((await readErrorMessage(response)) || "Registration failed");
       }
       
-      toast.success("Identity Confirmed");
+      toast.success("Registration saved");
       if (onLogin) {
         onLogin();
+        router.refresh();
       } else {
-        router.push("/" as Route);
+        router.replace("/start" as Route);
+        router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Registration failed");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="panel-glass overflow-hidden p-5 sm:p-8 lg:p-10">
+    <BorderGlow
+      className="home-registration-glow p-5 sm:p-8 lg:p-10"
+      edgeSensitivity={28}
+      glowColor="2 97 59"
+      backgroundColor="#050202"
+      borderRadius={28}
+      glowRadius={34}
+      glowIntensity={0.9}
+      coneSpread={24}
+      animated
+      colors={["#fc3030", "#ffb000", "#ffffff"]}
+    >
       <div className="mb-8 sm:mb-10">
         <div className="inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand/10 px-3 py-1 mb-6">
           <span className="text-[0.65rem] font-medium text-white/80 uppercase tracking-widest">Player Login</span>
@@ -98,10 +127,10 @@ export function AuthPanel({ onLogin }: AuthPanelProps) {
         
         <div className="pt-2 sm:pt-4">
           <button type="submit" disabled={loading} className="button-glass-primary w-full shadow-brand/20">
-            {loading ? "Logging In..." : "Claim Coin"}
+            {loading ? "Saving..." : "Start Challenge"}
           </button>
         </div>
       </form>
-    </div>
+    </BorderGlow>
   );
 }

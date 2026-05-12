@@ -1,8 +1,24 @@
+export class MissingEnvironmentVariableError extends Error {
+  readonly names: string[];
+
+  constructor(names: string[]) {
+    super(`Missing environment variable. Expected: ${names.join(" or ")}`);
+    this.name = "MissingEnvironmentVariableError";
+    this.names = names;
+  }
+}
+
+export function isMissingEnvironmentVariableError(
+  error: unknown,
+): error is MissingEnvironmentVariableError {
+  return error instanceof MissingEnvironmentVariableError;
+}
+
 function getEnv(name: string) {
   const value = process.env[name];
 
   if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
+    throw new MissingEnvironmentVariableError([name]);
   }
 
   return value;
@@ -17,7 +33,7 @@ function getEnvFrom(names: string[]) {
     }
   }
 
-  throw new Error(`Missing environment variable. Expected one of: ${names.join(", ")}`);
+  throw new MissingEnvironmentVariableError(names);
 }
 
 export const env = {

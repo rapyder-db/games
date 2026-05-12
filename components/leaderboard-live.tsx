@@ -10,11 +10,17 @@ import { cn } from "@/lib/utils";
 type LeaderboardLiveProps = {
   initialEntries: LeaderboardEntry[];
   highlightPlayerId: string | null;
+  displayMode?: boolean;
 };
+
+function formatScore(score: number) {
+  return `${Math.round(score / 10)}/10`;
+}
 
 export function LeaderboardLive({
   initialEntries,
   highlightPlayerId,
+  displayMode = false,
 }: LeaderboardLiveProps) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [entries, setEntries] = useState(initialEntries);
@@ -90,23 +96,35 @@ export function LeaderboardLive({
     };
   }, [supabase]);
 
+  const visibleEntries = displayMode ? entries.slice(0, 12) : entries;
+
   return (
     <>
-      <section className="relative z-10 mx-auto w-full max-w-5xl space-y-5 animate-fade-in px-3 sm:space-y-6 sm:px-0">
+      <section
+        className={cn(
+          "relative z-10 mx-auto w-full space-y-5 animate-fade-in px-3 sm:space-y-6 sm:px-0",
+          displayMode ? "max-w-7xl py-4 lg:py-8" : "max-w-5xl",
+        )}
+      >
         
         {/* Glowing Pinball Backglass Title Header */}
         <div className="dot-matrix-screen mb-6 flex flex-col items-start justify-between gap-4 border-[4px] p-4 sm:mb-8 sm:flex-row sm:items-center sm:gap-6 sm:border-[6px] sm:p-6">
           <div>
             <div className="inline-flex items-center gap-2 mb-3">
               <span className="h-3 w-3 rounded-full bg-brand animate-pulse-neon-red shadow-[0_0_15px_#fc3030]"></span>
-              <p className="dot-matrix-text-red text-sm">HIGH SCORES</p>
+              <p className="dot-matrix-text-red text-sm">{displayMode ? "LIVE EVENT" : "HIGH SCORES"}</p>
             </div>
-            <h1 className="text-3xl font-mono dot-matrix-text tracking-wide drop-shadow-[0_0_20px_#ffb000] sm:text-5xl">
-              CHAMPIONS
+            <h1 className={cn(
+              "font-mono dot-matrix-text tracking-wide drop-shadow-[0_0_20px_#ffb000]",
+              displayMode ? "text-4xl sm:text-6xl lg:text-7xl" : "text-3xl sm:text-5xl",
+            )}>
+              {displayMode ? "LIVE LEADERBOARD" : "CHAMPIONS"}
             </h1>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-[#333] bg-[#111] px-4 py-2">
-            <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#aaa]">TOP 50</span>
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#aaa]">
+              {displayMode ? "DISPLAY MODE" : "TOP 50"}
+            </span>
           </div>
         </div>
 
@@ -124,7 +142,7 @@ export function LeaderboardLive({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#ffb000]/10">
-                {entries.map((entry, index) => {
+                {visibleEntries.map((entry, index) => {
                   const isHighlighted = highlightPlayerId === entry.player_id;
                   const isFirst = index === 0;
 
@@ -159,16 +177,17 @@ export function LeaderboardLive({
                       </td>
                       <td className="px-3 py-4 text-right sm:px-6 sm:py-5">
                         <span className={cn(
-                          "text-lg font-bold tracking-[0.18em] sm:text-3xl",
+                          "text-lg font-bold tracking-[0.18em]",
+                          displayMode ? "sm:text-4xl lg:text-5xl" : "sm:text-3xl",
                           isFirst ? "dot-matrix-text-red drop-shadow-[0_0_20px_#fc3030]" : "text-[#fc3030]/80"
                         )}>
-                          {String(entry.score).padStart(6, '0')}
+                          {formatScore(entry.score)}
                         </span>
                       </td>
                     </tr>
                   );
                 })}
-                {entries.length === 0 ? (
+                {visibleEntries.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-6 py-16 text-center dot-matrix-text text-sm">
                       AWAITING COINS...
