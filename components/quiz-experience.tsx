@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { QUIZ_VERSION, getRandomizedQuizQuestions } from "@/lib/quizQuestions";
@@ -11,7 +10,6 @@ type QuizExperienceProps = {
   initialName: string;
   initialCompanyName: string;
   bestScore: number | null;
-  playerId: string;
 };
 
 type Step = "quiz" | "summary";
@@ -92,7 +90,7 @@ async function dataUrlToFile(dataUrl: string, fileName: string) {
   return new File([blob], fileName, { type: blob.type || "image/png" });
 }
 
-async function svgDataUrlToPngDataUrl(svgDataUrl: string) {
+async function svgDataUrlToPngObjectUrl(svgDataUrl: string) {
   const image = new Image();
   image.decoding = "async";
 
@@ -105,8 +103,8 @@ async function svgDataUrlToPngDataUrl(svgDataUrl: string) {
   await loaded;
 
   const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth || 1536;
-  canvas.height = image.naturalHeight || 2752;
+  canvas.width = image.naturalWidth || 768;
+  canvas.height = image.naturalHeight || 1376;
 
   const context = canvas.getContext("2d");
 
@@ -115,7 +113,21 @@ async function svgDataUrlToPngDataUrl(svgDataUrl: string) {
   }
 
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/png");
+
+  return new Promise<string>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Failed to export score card image."));
+          return;
+        }
+
+        resolve(URL.createObjectURL(blob));
+      },
+      "image/png",
+      0.92,
+    );
+  });
 }
 
 export function QuizExperience({
@@ -123,9 +135,7 @@ export function QuizExperience({
   initialName,
   initialCompanyName,
   bestScore,
-  playerId,
 }: QuizExperienceProps) {
-  const router = useRouter();
   const [questions, setQuestions] = useState(() => getRandomizedQuizQuestions());
   const [step, setStep] = useState<Step>("quiz");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -137,6 +147,7 @@ export function QuizExperience({
   const [generatingCard, setGeneratingCard] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const lastRevealSoundRef = useRef<string | null>(null);
+  const scoreCardObjectUrlRef = useRef<string | null>(null);
 
   const getAudioContext = () => {
     if (audioContextRef.current) {
@@ -241,8 +252,22 @@ export function QuizExperience({
         void audioContextRef.current.close();
         audioContextRef.current = null;
       }
+
+      if (scoreCardObjectUrlRef.current) {
+        URL.revokeObjectURL(scoreCardObjectUrlRef.current);
+        scoreCardObjectUrlRef.current = null;
+      }
     };
   }, []);
+
+  function replaceScoreCardUrl(nextUrl: string | null) {
+    if (scoreCardObjectUrlRef.current) {
+      URL.revokeObjectURL(scoreCardObjectUrlRef.current);
+    }
+
+    scoreCardObjectUrlRef.current = nextUrl;
+    setScoreCardUrl(nextUrl);
+  }
 
   useEffect(() => {
     if (step !== "summary") {
@@ -414,7 +439,7 @@ export function QuizExperience({
       setRewardState(nextRewardState);
 
       setGeneratingCard(true);
-      setScoreCardUrl(null);
+      replaceScoreCardUrl(null);
 
       const cardResponse = await fetch("/api/generate-score-card", {
         method: "POST",
@@ -437,8 +462,8 @@ export function QuizExperience({
         throw new Error(cardPayload.error ?? "Failed to generate score card.");
       }
 
-      const pngCardUrl = await svgDataUrlToPngDataUrl(cardPayload.cardUrl);
-      setScoreCardUrl(pngCardUrl);
+      const pngCardUrl = await svgDataUrlToPngObjectUrl(cardPayload.cardUrl);
+      replaceScoreCardUrl(pngCardUrl);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save score.");
     } finally {
@@ -543,7 +568,7 @@ export function QuizExperience({
     setAnswers(Array(nextQuestions.length).fill(-1));
     setStep("quiz");
     setRewardState(null);
-    setScoreCardUrl(null);
+    replaceScoreCardUrl(null);
     lastRevealSoundRef.current = null;
   }
 

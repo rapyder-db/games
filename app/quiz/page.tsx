@@ -26,7 +26,6 @@ export default async function QuizPage() {
 
   return (
     <QuizExperience
-      playerId={playerId}
       userEmail={playerProfile.email}
       initialName={playerProfile.name}
       initialCompanyName={playerProfile.company_name}

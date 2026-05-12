@@ -114,22 +114,44 @@ function animateValue({
   onUpdate: (value: number) => void;
   onEnd?: () => void;
 }) {
+  let cancelled = false;
+  let animationFrame = 0;
   const startTime = performance.now() + delay;
 
   function tick() {
+    if (cancelled) {
+      return;
+    }
+
     const elapsed = performance.now() - startTime;
     const progress = Math.min(elapsed / duration, 1);
 
     onUpdate(start + (end - start) * ease(progress));
 
     if (progress < 1) {
-      requestAnimationFrame(tick);
+      animationFrame = requestAnimationFrame(tick);
     } else {
       onEnd?.();
     }
   }
 
-  window.setTimeout(() => requestAnimationFrame(tick), delay);
+  const timeout = window.setTimeout(() => {
+    animationFrame = requestAnimationFrame(tick);
+  }, delay);
+
+  return () => {
+    cancelled = true;
+    window.clearTimeout(timeout);
+    window.cancelAnimationFrame(animationFrame);
+  };
+}
+
+function shouldReduceGlowEffects() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.matchMedia("(prefers-reduced-motion: reduce), (hover: none), (pointer: coarse)").matches;
 }
 
 export function BorderGlow({
@@ -147,6 +169,9 @@ export function BorderGlow({
   fillOpacity = 0.5,
 }: BorderGlowProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const latestPointerRef = useRef({ clientX: 0, clientY: 0 });
+  const effectsEnabledRef = useRef(true);
 
   const getCenterOfElement = useCallback((el: HTMLElement) => {
     const { width, height } = el.getBoundingClientRect();
@@ -190,41 +215,75 @@ export function BorderGlow({
 
   const handlePointerMove = useCallback(
     (event: PointerEvent<HTMLDivElement>) => {
+      if (!effectsEnabledRef.current) {
+        return;
+      }
+
       const card = cardRef.current;
 
       if (!card) {
         return;
       }
 
-      const rect = card.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      const edge = getEdgeProximity(card, x, y);
-      const angle = getCursorAngle(card, x, y);
+      latestPointerRef.current = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+      };
 
-      card.style.setProperty("--edge-proximity", `${(edge * 100).toFixed(3)}`);
-      card.style.setProperty("--cursor-angle", `${angle.toFixed(3)}deg`);
+      if (frameRef.current !== null) {
+        return;
+      }
+
+      frameRef.current = window.requestAnimationFrame(() => {
+        frameRef.current = null;
+
+        const activeCard = cardRef.current;
+
+        if (!activeCard) {
+          return;
+        }
+
+        const rect = activeCard.getBoundingClientRect();
+        const x = latestPointerRef.current.clientX - rect.left;
+        const y = latestPointerRef.current.clientY - rect.top;
+        const edge = getEdgeProximity(activeCard, x, y);
+        const angle = getCursorAngle(activeCard, x, y);
+
+        activeCard.style.setProperty("--edge-proximity", `${(edge * 100).toFixed(3)}`);
+        activeCard.style.setProperty("--cursor-angle", `${angle.toFixed(3)}deg`);
+      });
     },
     [getCursorAngle, getEdgeProximity],
   );
 
   useEffect(() => {
-    if (!animated || !cardRef.current) {
+    effectsEnabledRef.current = !shouldReduceGlowEffects();
+
+    return () => {
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!animated || !cardRef.current || !effectsEnabledRef.current) {
       return;
     }
 
     const card = cardRef.current;
     const angleStart = 110;
     const angleEnd = 465;
+    const cleanups: Array<() => void> = [];
 
     card.classList.add("sweep-active");
     card.style.setProperty("--cursor-angle", `${angleStart}deg`);
 
-    animateValue({
+    cleanups.push(animateValue({
       duration: 500,
       onUpdate: (value) => card.style.setProperty("--edge-proximity", String(value)),
-    });
-    animateValue({
+    }));
+    cleanups.push(animateValue({
       ease: easeInCubic,
       duration: 1500,
       end: 50,
@@ -232,8 +291,8 @@ export function BorderGlow({
         const angle = (angleEnd - angleStart) * (value / 100) + angleStart;
         card.style.setProperty("--cursor-angle", `${angle}deg`);
       },
-    });
-    animateValue({
+    }));
+    cleanups.push(animateValue({
       ease: easeOutCubic,
       delay: 1500,
       duration: 2250,
@@ -243,8 +302,8 @@ export function BorderGlow({
         const angle = (angleEnd - angleStart) * (value / 100) + angleStart;
         card.style.setProperty("--cursor-angle", `${angle}deg`);
       },
-    });
-    animateValue({
+    }));
+    cleanups.push(animateValue({
       ease: easeInCubic,
       delay: 2500,
       duration: 1500,
@@ -252,7 +311,12 @@ export function BorderGlow({
       end: 0,
       onUpdate: (value) => card.style.setProperty("--edge-proximity", String(value)),
       onEnd: () => card.classList.remove("sweep-active"),
-    });
+    }));
+
+    return () => {
+      cleanups.forEach((cleanup) => cleanup());
+      card.classList.remove("sweep-active");
+    };
   }, [animated]);
 
   const style: CSSVariableProperties = {

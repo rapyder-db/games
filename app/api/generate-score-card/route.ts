@@ -12,6 +12,13 @@ const generateScoreCardSchema = z.object({
   score: z.number().int().min(0).max(10),
 });
 
+type ScoreCardAssets = {
+  backgroundUrl: string;
+  logoUrl: string;
+};
+
+let scoreCardAssetsPromise: Promise<ScoreCardAssets> | null = null;
+
 function normalizeScore(score: number) {
   return score <= 10 ? score * 10 : score;
 }
@@ -72,6 +79,22 @@ async function fileToDataUrl(filePath: string) {
   return `data:${mimeType};base64,${buffer.toString("base64")}`;
 }
 
+function getScoreCardAssets() {
+  if (!scoreCardAssetsPromise) {
+    const root = process.cwd();
+
+    scoreCardAssetsPromise = Promise.all([
+      fileToDataUrl(path.join(root, "public", "Template_Card 2.jpeg")),
+      fileToDataUrl(path.join(root, "public", "_rapyder_logo_clean.svg")),
+    ]).then(([backgroundUrl, logoUrl]) => ({
+      backgroundUrl,
+      logoUrl,
+    }));
+  }
+
+  return scoreCardAssetsPromise;
+}
+
 export async function POST(request: Request) {
   const json = await request.json();
   const parsed = generateScoreCardSchema.safeParse(json);
@@ -85,9 +108,7 @@ export async function POST(request: Request) {
 
   try {
     const { name, companyName, score } = parsed.data;
-    const root = process.cwd();
-    const backgroundUrl = await fileToDataUrl(path.join(root, "public", "Template_Card 2.jpeg"));
-    const logoUrl = await fileToDataUrl(path.join(root, "public", "rapyder-logo-clean.png"));
+    const { backgroundUrl, logoUrl } = await getScoreCardAssets();
 
     const safeName = escapeXml(name.trim().toUpperCase());
     const safeCompany = escapeXml(companyName.trim().toUpperCase());
@@ -99,7 +120,7 @@ export async function POST(request: Request) {
     const companyFontSize = fitFontSize(safeCompany, 340, 22, 12, 0.58);
 
     const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="1536" height="2752" viewBox="0 0 768 1376">
+      <svg xmlns="http://www.w3.org/2000/svg" width="768" height="1376" viewBox="0 0 768 1376">
         <defs>
           <filter id="scoreGlow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="14" result="blur" />

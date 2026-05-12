@@ -89,6 +89,8 @@ body {
 /* Metallic Chrome bumper base */
 .pinball-bumper {
   @apply relative rounded-2xl bg-chrome shadow-chrome-bumper transition-all duration-100 ease-in-out active:translate-y-[4px] active:shadow-chrome-bumper-pressed p-[3px];
+  touch-action: manipulation;
+  user-select: none;
 }
 
 /* 
@@ -1227,6 +1229,24 @@ body {
 }
 
 @media (hover: none) and (pointer: coarse) {
+  .border-glow-card::before,
+  .border-glow-card::after,
+  .border-glow-card > .edge-light {
+    display: none;
+  }
+
+  .border-glow-card {
+    transform: none;
+  }
+
+  .arcade-coin-idle {
+    animation-name: coinHoverLite;
+  }
+
+  .quiz-fact-panel {
+    animation: none;
+  }
+
   .reward-card-float,
   .reward-card-float-alt,
   .led-flicker {
@@ -1238,6 +1258,16 @@ body {
     animation-duration: 0.22s;
   }
 
+}
+
+@keyframes coinHoverLite {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-5deg) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -12px, 0) rotate(5deg) scale(1.04);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
