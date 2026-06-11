@@ -1,14 +1,16 @@
 # Rapyder Quiz + Live Leaderboard
 
-Production-ready, free-tier friendly quiz app built with Next.js App Router, TypeScript, Tailwind CSS, Supabase (Postgres + Auth + Realtime), and Vercel.
+Production-ready, free-tier friendly event quiz app built with Next.js App Router, TypeScript, Tailwind CSS, Supabase Postgres + Realtime, and Vercel.
 
 ## Features
 
-- Supabase Auth with magic link and optional Google OAuth
-- Login-required quiz flow
-- 10 hardcoded Rapyder/cloud MCQs
+- Event registration with name, company, and email
+- Login-required arcade lobby and quiz flow
+- 7-question quiz sampled randomly from 10 Rapyder GenAI/AWS questions
+- Correct/wrong answer popups with explanation and 7-second auto-advance
 - Server-side score validation and best-score-only persistence
 - Live leaderboard (Top 50) powered by Supabase Realtime
+- Hidden admin export for the configured admin identity
 - Row Level Security and safe public leaderboard view
 - Zod validation on inputs and submission payloads
 
@@ -16,7 +18,7 @@ Production-ready, free-tier friendly quiz app built with Next.js App Router, Typ
 
 - Frontend: Next.js App Router + TypeScript
 - Styling: Tailwind CSS
-- Backend: Supabase Postgres + Auth + Realtime
+- Backend: Supabase Postgres + Realtime
 - Hosting: Vercel
 
 ## Local setup
@@ -34,34 +36,12 @@ This creates:
 - `public.players`
 - `public.scores`
 - indexes and uniqueness constraints
-- `updated_at` and auth-email sync triggers
+- `updated_at` triggers
 - RLS policies
 - `public.leaderboard_entries` view
 - Realtime publication for `public.scores`
 
-### 3. Configure Auth
-
-In Supabase:
-
-- Go to `Authentication > URL Configuration`
-- Set `Site URL` to `http://localhost:3000`
-- Add redirect URL `http://localhost:3000/auth/callback`
-- After deployment, also add:
-  - `https://YOUR_VERCEL_DOMAIN/auth/callback`
-  - `https://YOUR_CUSTOM_DOMAIN/auth/callback` if you use one
-
-For Magic Link:
-
-- `Authentication > Providers > Email`
-- Enable Email provider and Magic Link flow
-
-For Google OAuth (optional):
-
-- Create OAuth credentials in Google Cloud
-- In Supabase `Authentication > Providers > Google`, enable Google and add client ID/secret
-- Use the Supabase callback URL shown in that screen
-
-### 4. Add environment variables
+### 3. Add environment variables
 
 Create `.env.local` in the project root:
 
@@ -78,7 +58,7 @@ Notes:
 - Never expose the server secret key in client components
 - This app also accepts legacy names `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`
 
-### 5. Install dependencies and run locally
+### 4. Install dependencies and run locally
 
 On Windows PowerShell, use `npm.cmd` if script execution blocks `npm`.
 
@@ -111,42 +91,40 @@ In `Project Settings > Environment Variables`, add:
 
 Deploy the project.
 
-### 4. Update Supabase redirect URLs
-
-After the first Vercel deploy:
-
-- Add `https://YOUR_PROJECT.vercel.app/auth/callback`
-- If using a custom domain, add that callback URL too
-- Update `Site URL` if you want email links to point to production by default
-
 ## App flow
 
-1. User signs in on `/`
-2. `/quiz` requires auth and redirects home if not logged in
-3. Player profile collects `name` and `companyName`
-4. Quiz runs 10 questions, one at a time
+1. User registers on `/`
+2. `/start` shows the arcade lobby and coin insertion experience
+3. `/quiz` requires the event session cookie and redirects home if not logged in
+4. Quiz runs 7 random questions, one at a time
 5. Client sends answers to `POST /api/submit-score`
-6. Server validates session, computes score, upserts player, and saves only a better score
+6. Server validates the session, computes score from question IDs, and saves only a better score
 7. `/leaderboard` shows the Top 50 and refreshes live on inserts/updates
+8. `/admin` is unlinked; only the configured admin identity can download the Excel-compatible export
 
 ## Security model
 
 - Client does not write directly to `scores`
-- `POST /api/submit-score` verifies the Supabase session server-side
+- `POST /api/submit-score` verifies the event session cookie server-side
 - Score is computed on the server from submitted answers
 - RLS is enabled on `players` and `scores`
-- `players` rows are readable/updatable only by their owner
-- `scores` are readable by authenticated users
+- Public clients can read leaderboard-safe score data through the view
+- Writes happen through server routes using the service role key
 - Public leaderboard data is exposed via `leaderboard_entries` view without exposing player emails
 
 ## Project structure
 
 ```text
 app/
+  admin/page.tsx
+  api/admin/export-users/route.ts
   api/submit-score/route.ts
-  auth/callback/route.ts
+  api/login/route.ts
+  api/logout/route.ts
+  api/generate-score-card/route.ts
   leaderboard/page.tsx
   quiz/page.tsx
+  start/page.tsx
   globals.css
   layout.tsx
   page.tsx
@@ -156,6 +134,7 @@ components/
   quiz-experience.tsx
   site-header.tsx
 lib/
+  admin.ts
   env.ts
   leaderboard.ts
   quizQuestions.ts

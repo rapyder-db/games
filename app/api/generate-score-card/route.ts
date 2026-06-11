@@ -26,13 +26,14 @@ function displayScore(score: number) {
 }
 
 function titleFor(score: number) {
-  const scorePercent = (score / QUIZ_QUESTION_COUNT) * 100;
-
-  if (scorePercent >= 95) return "CLOUD QUIZ CHAMPION";
-  if (scorePercent >= 85) return "RAPYDER ELITE";
-  if (scorePercent >= 75) return "CLOUD STRATEGIST";
-  if (scorePercent >= 65) return "DATA RUNNER";
-  return "ARCADE CONTENDER";
+  if (score >= 7) return "GENAI GRANDMASTER";
+  if (score === 6) return "RAPYDER ELITE";
+  if (score === 5) return "CLOUD STRATEGIST";
+  if (score === 4) return "AI MOMENTUM BUILDER";
+  if (score === 3) return "TECHSTUDIO EXPLORER";
+  if (score === 2) return "CLOUD CURIOUS";
+  if (score === 1) return "ARCADE INITIATE";
+  return "READY FOR NEXT ROUND";
 }
 
 function escapeXml(value: string) {

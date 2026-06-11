@@ -25,35 +25,40 @@ type RewardState = {
 };
 
 const REWARD_UNLOCK_SCORE = Math.ceil(QUIZ_QUESTION_COUNT * 0.7) * 10;
-
-function scorePercentage(score: number) {
-  return (score / (QUIZ_QUESTION_COUNT * 10)) * 100;
-}
+const ANSWER_POPUP_AUTO_ADVANCE_MS = 7000;
 
 function getPlayerTitle(rewardState: RewardState) {
-  const bestScorePercent = scorePercentage(rewardState.bestScore);
+  const bestCorrectAnswers = Math.round(rewardState.bestScore / 10);
 
-  if (rewardState.rank === 1) {
-    return "Cloud Champion";
+  if (bestCorrectAnswers >= 7) {
+    return "GenAI Grandmaster";
   }
 
-  if (rewardState.rank <= 3) {
-    return "GenAI Vanguard";
-  }
-
-  if (bestScorePercent >= 80) {
-    return "Modernization Ace";
-  }
-
-  if (bestScorePercent >= 70) {
+  if (bestCorrectAnswers === 6) {
     return "Rapyder Elite";
   }
 
-  if (bestScorePercent >= 50) {
-    return "Data Runner";
+  if (bestCorrectAnswers === 5) {
+    return "Cloud Strategist";
   }
 
-  return "Arcade Contender";
+  if (bestCorrectAnswers === 4) {
+    return "AI Momentum Builder";
+  }
+
+  if (bestCorrectAnswers === 3) {
+    return "TechStudio Explorer";
+  }
+
+  if (bestCorrectAnswers === 2) {
+    return "Cloud Curious";
+  }
+
+  if (bestCorrectAnswers === 1) {
+    return "Arcade Initiate";
+  }
+
+  return "Ready For Next Round";
 }
 
 function getStreakLabel(streak: number) {
@@ -71,8 +76,6 @@ function getStreakLabel(streak: number) {
 
   return "Fresh Run";
 }
-
-
 
 function slugify(value: string) {
   return value
@@ -407,12 +410,16 @@ export function QuizExperience({
 
     const autoAdvanceTimer = window.setTimeout(() => {
       handleNext();
-    }, 20000);
+    }, ANSWER_POPUP_AUTO_ADVANCE_MS);
 
     return () => window.clearTimeout(autoAdvanceTimer);
   }, [showPopup, selectedAnswer, currentIndex]);
 
   async function handleSubmitScore() {
+    if (submitting) {
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -497,6 +504,10 @@ export function QuizExperience({
     }
 
     try {
+      if (typeof navigator === "undefined" || !navigator.clipboard) {
+        throw new Error("Clipboard is not available.");
+      }
+
       await navigator.clipboard.writeText(shareCopy);
       toast.success("Result card copied");
     } catch {
@@ -527,6 +538,13 @@ export function QuizExperience({
 
     try {
       const file = await dataUrlToFile(scoreCardUrl, scoreCardFileName);
+      if (
+        typeof navigator.canShare === "function" &&
+        !navigator.canShare({ files: [file] })
+      ) {
+        throw new Error("File sharing is not available.");
+      }
+
       await navigator.share({
         title: "Rapyder Arcade Score Card",
         text: shareCopy,
@@ -550,6 +568,13 @@ export function QuizExperience({
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
         const file = await dataUrlToFile(scoreCardUrl, scoreCardFileName);
+        if (
+          typeof navigator.canShare === "function" &&
+          !navigator.canShare({ files: [file] })
+        ) {
+          throw new Error("File sharing is not available.");
+        }
+
         await navigator.share({
           title: "Rapyder Arcade Score Card",
           text: shareCopy,
@@ -564,7 +589,9 @@ export function QuizExperience({
     }
 
     try {
-      await navigator.clipboard.writeText(shareCopy);
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(shareCopy);
+      }
     } catch {
       // Non-blocking.
     }
@@ -709,7 +736,7 @@ export function QuizExperience({
               <button
                 type="button"
                 onClick={handleLinkedInShare}
-                disabled={!linkedinShareUrl}
+                disabled={!linkedinShareUrl || !scoreCardUrl}
                 className="button-glass-secondary w-full"
               >
                 Post on LinkedIn
@@ -755,7 +782,7 @@ export function QuizExperience({
 
   if (step === "summary") {
     return (
-      <section className="panel-glass mx-auto max-w-3xl p-5 text-center relative sm:p-10 lg:p-16">
+      <section className="panel-glass quiz-summary-shell mx-auto max-w-3xl p-5 text-center relative sm:p-10 lg:p-16">
         {confettiActive && (
           <div className="confetti-container">
             {confettiPieces.map((index) => (
@@ -815,20 +842,20 @@ export function QuizExperience({
   }
 
   return (
-      <section key={currentIndex} className="relative z-10 mx-auto max-w-4xl animate-fade-in px-3 pb-16 sm:px-0 sm:pb-20">
+      <section key={currentIndex} className="quiz-play-shell relative z-10 mx-auto max-w-4xl animate-fade-in px-3 pb-16 sm:px-0 sm:pb-20">
       
       <div className="mb-5 text-center font-mono text-xs text-slate-300 sm:mb-6 sm:text-sm">
         Question {currentIndex + 1} of {questions.length}
       </div>
       
-      <div className="panel-glass mb-6 overflow-hidden border-x-[8px] border-x-[#1a1a1a] bg-black/60 p-4 shadow-[0_0_50px_rgba(0,0,0,0.8)] sm:mb-8 sm:border-x-[12px] sm:p-8 lg:p-12">
-        <div className="dot-matrix-screen mb-8 flex min-h-[132px] items-center justify-center p-4 text-center sm:mb-12 sm:min-h-[160px] sm:p-8 lg:mb-16">
-          <h1 className="text-lg leading-relaxed dot-matrix-text tracking-normal drop-shadow-[0_0_12px_#ffb000] sm:text-2xl md:text-3xl">
+      <div className="panel-glass quiz-play-card mb-6 overflow-hidden border-x-[8px] border-x-[#1a1a1a] bg-black/60 p-4 shadow-[0_0_50px_rgba(0,0,0,0.8)] sm:mb-8 sm:border-x-[12px] sm:p-8 lg:p-12">
+        <div className="dot-matrix-screen quiz-question-screen mb-8 flex min-h-[132px] items-center justify-center p-4 text-center sm:mb-12 sm:min-h-[160px] sm:p-8 lg:mb-16">
+          <h1 className="quiz-question-text text-lg leading-relaxed dot-matrix-text tracking-normal drop-shadow-[0_0_12px_#ffb000] sm:text-2xl md:text-3xl">
             {currentQuestion.question}
           </h1>
         </div>
 
-        <div className="grid gap-4 sm:gap-5 lg:gap-6">
+        <div className="quiz-answer-grid grid gap-4 sm:gap-5 lg:gap-6">
           {currentQuestion.options.map((option, optionIndex) => {
             const isSelected = selectedAnswer === optionIndex;
             const isCorrectOption = optionIndex === currentQuestion.correctIndex;
@@ -844,7 +871,7 @@ export function QuizExperience({
                 onMouseDown={!revealed ? triggerRipple : undefined}
                 onClick={() => handleSelect(optionIndex)}
                 className={cn(
-                  "pinball-bumper ripple-btn group block w-full text-left transition-all duration-300",
+                  "pinball-bumper quiz-answer-button ripple-btn group block w-full text-left transition-all duration-300",
                   isCorrectRevealed && "shadow-[0_0_20px_5px_rgba(98,255,155,0.4)]",
                   isWrongSelected && "shadow-neon-red",
                   !revealed && isSelected && "shadow-neon-red",
@@ -852,7 +879,7 @@ export function QuizExperience({
                 )}
               >
                 <div className={cn(
-                  "rounded-[13px] border px-4 py-4 transition-all duration-300 sm:px-6 sm:py-5 lg:py-6",
+                  "quiz-answer-inner rounded-[13px] border px-4 py-4 transition-all duration-300 sm:px-6 sm:py-5 lg:py-6",
                   isCorrectRevealed && "border-[#62ff9b]/50 bg-[radial-gradient(circle_at_30%_30%,#1a4d2e_0%,#0d2618_50%,#000_100%)] shadow-[inset_0_0_30px_rgba(98,255,155,0.15)]",
                   isWrongSelected && "border-[#fc3030]/50 bg-bumper-red shadow-[inset_0_0_30px_#000]",
                   !revealed && isSelected && "border-white/10 bg-bumper-red shadow-[inset_0_0_30px_#000]",
@@ -861,7 +888,7 @@ export function QuizExperience({
                 )}>
                   <div className="flex items-center gap-3 sm:gap-5 lg:gap-6">
                     <div className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-full border-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] sm:h-12 sm:w-12 transition-all duration-300",
+                      "quiz-answer-mark flex h-10 w-10 items-center justify-center rounded-full border-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] sm:h-12 sm:w-12 transition-all duration-300",
                       isCorrectRevealed && "border-[#62ff9b] bg-[#1a4d2e] shadow-[0_0_15px_#62ff9b]",
                       isWrongSelected && "border-[#ffcccc] bg-[#fc3030] shadow-[0_0_15px_#fc3030]",
                       !revealed && isSelected && "border-[#ffcccc] bg-[#fc3030] shadow-[0_0_15px_#fc3030]",
@@ -880,7 +907,7 @@ export function QuizExperience({
                       </span>
                     </div>
                     <span className={cn(
-                      "font-mono text-sm font-bold tracking-tight sm:text-lg lg:text-xl transition-all duration-300",
+                      "quiz-answer-text font-mono text-sm font-bold tracking-tight sm:text-lg lg:text-xl transition-all duration-300",
                       isCorrectRevealed && "text-[#62ff9b] drop-shadow-[0_0_8px_rgba(98,255,155,0.6)]",
                       isWrongSelected && "text-white/60 line-through",
                       !revealed && isSelected && "text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]",
@@ -899,10 +926,14 @@ export function QuizExperience({
 
       {/* Answer result popup overlay */}
       {showPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fade-in px-4">
+        <div className="answer-popup-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fade-in px-4">
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-live="polite"
+            aria-labelledby="answer-result-title"
             className={cn(
-              "panel-glass relative mx-auto max-w-lg overflow-hidden rounded-[28px] border-2 bg-black/90 p-6 text-center sm:p-8",
+              "panel-glass answer-popup-panel relative mx-auto max-w-lg overflow-hidden rounded-[28px] border-2 bg-black/90 p-6 text-center sm:p-8",
               selectedAnswerIsCorrect
                 ? "border-[#62ff9b]/30 shadow-[0_0_60px_rgba(98,255,155,0.15)]"
                 : "border-[#fc3030]/35 shadow-[0_0_60px_rgba(252,48,48,0.16)]",
@@ -910,6 +941,7 @@ export function QuizExperience({
           >
             <div className="dot-matrix-screen mb-5 px-4 py-4">
               <p
+                id="answer-result-title"
                 className="font-mono text-2xl font-bold tracking-wide sm:text-3xl"
                 style={{
                   color: selectedAnswerIsCorrect ? "#62ff9b" : "#fc3030",
@@ -918,7 +950,7 @@ export function QuizExperience({
                     : "0 0 20px #fc3030, 0 0 40px rgba(252,48,48,0.4)",
                 }}
               >
-                {selectedAnswerIsCorrect ? "✓ CORRECT!" : "✕ WRONG!"}
+                {selectedAnswerIsCorrect ? "\u2713 CORRECT!" : "\u2715 WRONG!"}
               </p>
             </div>
             {!selectedAnswerIsCorrect && (
@@ -930,7 +962,7 @@ export function QuizExperience({
               {currentQuestion.popupText}
             </p>
             <p className="mt-4 text-xs font-mono uppercase tracking-[0.18em] text-white/40">
-              Auto advancing in 20 seconds
+              Auto advancing in 7 seconds
             </p>
             <button
               type="button"

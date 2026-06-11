@@ -24,6 +24,18 @@ body {
   color: var(--tw-colors-chalk, #ffffff);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+main {
+  min-width: 0;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
 }
 
 ::selection {
@@ -53,10 +65,16 @@ body {
 
 .button-glass-primary {
   @apply inline-flex items-center justify-center rounded-2xl bg-brand/90 px-8 py-4 text-sm font-semibold tracking-wide text-white shadow-glass-button backdrop-blur-lg backdrop-saturate-200 transition-all duration-300 hover:bg-brand hover:shadow-glass-hover hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0;
+  min-height: 44px;
+  text-align: center;
+  text-wrap: balance;
 }
 
 .button-glass-secondary {
   @apply inline-flex items-center justify-center rounded-2xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold tracking-wide text-white backdrop-blur-lg backdrop-saturate-[150%] transition-all duration-300 hover:bg-white/10 hover:border-white/30 disabled:cursor-not-allowed disabled:opacity-50;
+  min-height: 42px;
+  text-align: center;
+  text-wrap: balance;
 }
 
 .input-glass {
@@ -355,6 +373,46 @@ body {
   pointer-events: none;
 }
 
+.arcade-coin-inserted-gif-wrap {
+  position: absolute;
+  inset: 9% 8% 18%;
+  z-index: 18;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: coinInsertedReveal 2.25s ease-out forwards;
+}
+
+.arcade-coin-inserted-gif {
+  width: min(100%, 420px);
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 24px;
+  mix-blend-mode: screen;
+  filter:
+    saturate(1.18)
+    contrast(1.08)
+    drop-shadow(0 0 28px rgba(255, 176, 0, 0.32))
+    drop-shadow(0 18px 42px rgba(0, 0, 0, 0.72));
+}
+
+@keyframes coinInsertedReveal {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.92);
+  }
+  12%,
+  82% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -12px, 0) scale(1.04);
+  }
+}
+
 .arcade-machine-layout .arcade-stage {
   margin-top: 15px;
 }
@@ -560,13 +618,6 @@ body {
   width: var(--arcade-button-width);
 }
 
-.quiz-fact-panel {
-  animation: pulseRed 3s ease-in-out infinite;
-  border-radius: 13px;
-  max-width: 100%;
-  min-height: calc(2.5rem + 12px); /* approximate option card height */
-}
-
 .reward-card-stage {
   position: relative;
   border-radius: 24px;
@@ -642,6 +693,72 @@ body {
 
 .results-actions {
   width: 100%;
+}
+
+.quiz-play-shell {
+  width: min(100%, 920px);
+}
+
+.quiz-play-card {
+  border-left-width: clamp(4px, 1.2vw, 12px);
+  border-right-width: clamp(4px, 1.2vw, 12px);
+  padding: clamp(1rem, 3.4vw, 3rem);
+}
+
+.quiz-question-screen {
+  min-height: clamp(96px, 20svh, 160px);
+  margin-bottom: clamp(1.1rem, 4svh, 4rem);
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.quiz-question-text {
+  max-width: 100%;
+  font-size: clamp(1rem, 2.7vw, 1.875rem);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.quiz-answer-grid {
+  gap: clamp(0.65rem, 1.8vw, 1.5rem);
+}
+
+.quiz-answer-button {
+  min-height: 48px;
+}
+
+.quiz-answer-inner {
+  min-height: 56px;
+  padding: clamp(0.8rem, 2.2vw, 1.5rem) clamp(0.9rem, 2.7vw, 1.5rem);
+}
+
+.quiz-answer-mark {
+  width: clamp(2.35rem, 8vw, 3rem);
+  height: clamp(2.35rem, 8vw, 3rem);
+  min-width: clamp(2.35rem, 8vw, 3rem);
+}
+
+.quiz-answer-text {
+  min-width: 0;
+  font-size: clamp(0.82rem, 2.25vw, 1.25rem);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.quiz-summary-shell {
+  width: min(100%, 760px);
+}
+
+.answer-popup-overlay {
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+}
+
+.answer-popup-panel {
+  width: min(100%, 34rem);
+  max-height: calc(100svh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .reward-card-orbit {
@@ -897,6 +1014,10 @@ body {
     backdrop-filter: blur(18px) saturate(150%);
   }
 
+  .quiz-play-shell {
+    max-width: 820px;
+  }
+
 }
 
 @media (max-width: 768px) {
@@ -955,9 +1076,36 @@ body {
   .site-header {
     flex-wrap: wrap;
   }
+
+  .app-shell {
+    padding-top: 1rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .quiz-play-shell {
+    padding-bottom: 2.5rem;
+  }
+
+  .quiz-play-card {
+    margin-bottom: 1rem;
+  }
+
+  .quiz-answer-inner {
+    border-radius: 12px;
+  }
+
+  .answer-popup-panel {
+    border-radius: 22px;
+    padding: 1.25rem;
+  }
 }
 
 @media (max-width: 640px) {
+  .app-shell {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
   .arcade-start-view {
     min-height: 100vh;
     padding-bottom: 0.8rem;
@@ -989,6 +1137,15 @@ body {
   .arcade-stage {
     min-height: min(78vh, 620px);
     max-height: none;
+  }
+
+  .arcade-coin-inserted-gif-wrap {
+    inset: 11% 5% 20%;
+  }
+
+  .arcade-coin-inserted-gif {
+    width: min(100%, 340px);
+    border-radius: 18px;
   }
 
   .arcade-screen-copy {
@@ -1043,6 +1200,39 @@ body {
     font-size: 0.8rem;
   }
 
+  .quiz-play-shell {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .quiz-play-card {
+    border-left-width: 4px;
+    border-right-width: 4px;
+  }
+
+  .quiz-question-screen {
+    min-height: clamp(86px, 17svh, 128px);
+  }
+
+  .quiz-question-text {
+    font-size: clamp(0.88rem, 4.2vw, 1.2rem);
+    line-height: 1.32;
+    letter-spacing: 0.02em;
+  }
+
+  .quiz-answer-inner {
+    min-height: 52px;
+  }
+
+  .quiz-answer-mark {
+    border-width: 3px;
+  }
+
+  .answer-popup-panel .dot-matrix-screen {
+    margin-bottom: 1rem;
+    padding: 0.85rem;
+  }
+
   .reward-card-preview {
     border-radius: 16px;
   }
@@ -1073,11 +1263,83 @@ body {
     border-radius: 18px;
   }
 
+  .quiz-play-card {
+    padding: 0.8rem;
+    border-radius: 20px;
+  }
+
+  .quiz-question-screen {
+    margin-bottom: 0.85rem;
+    padding: 0.85rem;
+  }
+
+  .quiz-answer-grid {
+    gap: 0.6rem;
+  }
+
+  .quiz-answer-inner {
+    padding: 0.72rem 0.78rem;
+  }
+
+  .quiz-answer-text {
+    font-size: clamp(0.78rem, 3.8vw, 0.95rem);
+  }
+
+  .answer-popup-overlay {
+    align-items: flex-end;
+    padding: 0.75rem;
+  }
+
+  .answer-popup-panel {
+    width: 100%;
+    max-height: calc(100svh - 1.5rem);
+  }
+
   header {
     gap: 12px;
     flex-wrap: wrap;
   }
 
+}
+
+@media (max-height: 760px) {
+  .app-shell {
+    padding-top: 0.75rem;
+    padding-bottom: 1rem;
+  }
+
+  .site-header {
+    margin-bottom: 0.8rem;
+    padding-top: 0.35rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .quiz-play-shell {
+    padding-bottom: 1rem;
+  }
+
+  .quiz-play-card {
+    margin-bottom: 0.75rem;
+  }
+
+  .quiz-question-screen {
+    min-height: clamp(78px, 18svh, 120px);
+    margin-bottom: 0.75rem;
+  }
+
+  .quiz-answer-grid {
+    gap: 0.55rem;
+  }
+
+  .quiz-answer-inner {
+    min-height: 48px;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+
+  .answer-popup-panel {
+    max-height: calc(100svh - 1rem);
+  }
 }
 
 .border-glow-card {
@@ -1243,10 +1505,6 @@ body {
     animation-name: coinHoverLite;
   }
 
-  .quiz-fact-panel {
-    animation: none;
-  }
-
   .reward-card-float,
   .reward-card-float-alt,
   .led-flicker {
@@ -1286,9 +1544,9 @@ body {
   .arcade-coin-idle,
   .arcade-coin-insert,
   .arcade-coin-spin,
+  .arcade-coin-inserted-gif-wrap,
   .arcade-stage-shake,
   .led-flicker,
-  .quiz-fact-panel,
   .reward-card-reveal,
   .reward-card-image,
   .reward-card-orbit,

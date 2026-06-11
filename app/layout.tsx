@@ -31,7 +31,7 @@ export default function RootLayout({
           <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/80" />
         </div>
         
-        <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
+        <div className="app-shell relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
           <SiteHeader />
           <main className="flex-1">{children}</main>
         </div>
