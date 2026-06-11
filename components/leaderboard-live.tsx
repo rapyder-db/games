@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { QUIZ_VERSION } from "@/lib/quizQuestions";
+import { QUIZ_QUESTION_COUNT, QUIZ_VERSION } from "@/lib/quizQuestions";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import type { LeaderboardEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ type LeaderboardLiveProps = {
 };
 
 function formatScore(score: number) {
-  return `${Math.round(score / 10)}/10`;
+  return `${Math.round(score / 10)}/${QUIZ_QUESTION_COUNT}`;
 }
 
 export function LeaderboardLive({

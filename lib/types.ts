@@ -3,6 +3,7 @@ export type QuizQuestion = {
   question: string;
   options: [string, string, string, string];
   correctIndex: number;
+  popupText: string;
 };
 
 export type SubmittedAnswer = {

@@ -4,12 +4,14 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { QUIZ_QUESTION_COUNT } from "@/lib/quizQuestions";
+
 export const runtime = "nodejs";
 
 const generateScoreCardSchema = z.object({
   name: z.string().trim().min(2).max(80),
   companyName: z.string().trim().min(2).max(120),
-  score: z.number().int().min(0).max(10),
+  score: z.number().int().min(0).max(QUIZ_QUESTION_COUNT),
 });
 
 type ScoreCardAssets = {
@@ -19,22 +21,17 @@ type ScoreCardAssets = {
 
 let scoreCardAssetsPromise: Promise<ScoreCardAssets> | null = null;
 
-function normalizeScore(score: number) {
-  return score <= 10 ? score * 10 : score;
-}
-
 function displayScore(score: number) {
-  const normalized = normalizeScore(score);
-  return normalized % 10 === 0 ? `${normalized / 10}/10` : `${normalized}/100`;
+  return `${score}/${QUIZ_QUESTION_COUNT}`;
 }
 
 function titleFor(score: number) {
-  const normalized = normalizeScore(score);
+  const scorePercent = (score / QUIZ_QUESTION_COUNT) * 100;
 
-  if (normalized >= 95) return "CLOUD QUIZ CHAMPION";
-  if (normalized >= 85) return "RAPYDER ELITE";
-  if (normalized >= 75) return "CLOUD STRATEGIST";
-  if (normalized >= 65) return "DATA RUNNER";
+  if (scorePercent >= 95) return "CLOUD QUIZ CHAMPION";
+  if (scorePercent >= 85) return "RAPYDER ELITE";
+  if (scorePercent >= 75) return "CLOUD STRATEGIST";
+  if (scorePercent >= 65) return "DATA RUNNER";
   return "ARCADE CONTENDER";
 }
 

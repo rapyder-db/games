@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { toast } from "sonner";
 
-import { QUIZ_VERSION, getRandomizedQuizQuestions } from "@/lib/quizQuestions";
+import { QUIZ_QUESTION_COUNT, QUIZ_VERSION, getRandomizedQuizQuestions } from "@/lib/quizQuestions";
 import { cn } from "@/lib/utils";
 
 type QuizExperienceProps = {
@@ -24,7 +24,15 @@ type RewardState = {
   rewardUnlocked: boolean;
 };
 
+const REWARD_UNLOCK_SCORE = Math.ceil(QUIZ_QUESTION_COUNT * 0.7) * 10;
+
+function scorePercentage(score: number) {
+  return (score / (QUIZ_QUESTION_COUNT * 10)) * 100;
+}
+
 function getPlayerTitle(rewardState: RewardState) {
+  const bestScorePercent = scorePercentage(rewardState.bestScore);
+
   if (rewardState.rank === 1) {
     return "Cloud Champion";
   }
@@ -33,15 +41,15 @@ function getPlayerTitle(rewardState: RewardState) {
     return "GenAI Vanguard";
   }
 
-  if (rewardState.bestScore >= 80) {
+  if (bestScorePercent >= 80) {
     return "Modernization Ace";
   }
 
-  if (rewardState.bestScore >= 70) {
+  if (bestScorePercent >= 70) {
     return "Rapyder Elite";
   }
 
-  if (rewardState.bestScore >= 50) {
+  if (bestScorePercent >= 50) {
     return "Data Runner";
   }
 
@@ -64,18 +72,7 @@ function getStreakLabel(streak: number) {
   return "Fresh Run";
 }
 
-const EVENT_FACTS = [
-  "One of only 3 companies in all of India trusted by AWS with the Generative AI Competency.",
-  "Rapyder's GenAI VoiceBot on Amazon Nova Sonic is already live - answering real customers for Fibe and Stellaps.",
-  "GenAI didn't just change Rapyder's product - it drove 60% more deals in a single year.",
-  "500+ enterprises chose Rapyder to lead their GenAI transformation. That's not a pilot - that's a movement.",
-  "35 GenAI proofs of concept built. 20+ shipped to production. Rapyder doesn't just demo AI - it deploys it.",
-  "150 AWS certifications earned in one year - because GenAI expertise isn't hired, it's built.",
-  "From BFSI to healthcare to manufacturing - Rapyder's ICoE ships GenAI for the industries that can't afford to get it wrong.",
-  "AWS Premier Tier + GenAI Competency: Rapyder holds both - a combination fewer than a handful of Indian firms can claim.",
-  "Snapdeal. Fibe. Stellaps. 500+ others. India's enterprises don't experiment with Rapyder - they scale with it.",
-  "Rapyder's GenAI is GDPR, PCI DSS, and KYC/AML compliant - built for industries where one AI mistake costs millions.",
-];
+
 
 function slugify(value: string) {
   return value
@@ -148,6 +145,8 @@ export function QuizExperience({
   const audioContextRef = useRef<AudioContext | null>(null);
   const lastRevealSoundRef = useRef<string | null>(null);
   const scoreCardObjectUrlRef = useRef<string | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
   const getAudioContext = () => {
     if (audioContextRef.current) {
@@ -238,8 +237,8 @@ export function QuizExperience({
 
   const currentQuestion = questions[currentIndex];
   const selectedAnswer = answers[currentIndex];
-  const factForQuestion = EVENT_FACTS[currentIndex % EVENT_FACTS.length];
-  const hasSelectedOption = selectedAnswer !== -1;
+  const selectedAnswerIsCorrect = selectedAnswer === currentQuestion.correctIndex;
+  const correctOptionText = currentQuestion.options[currentQuestion.correctIndex];
 
   const confettiPieces = useMemo(
     () => Array.from({ length: 28 }, (_, i) => i),
@@ -320,7 +319,7 @@ export function QuizExperience({
     const playerTitle = getPlayerTitle(rewardState);
 
     return [
-      `I scored ${rewardState.bestCorrectAnswers}/10 in the Rapyder Arcade Challenge.`,
+      `I scored ${rewardState.bestCorrectAnswers}/${QUIZ_QUESTION_COUNT} in the Rapyder Arcade Challenge.`,
       `${initialName} | ${playerTitle} | Rank #${rewardState.rank}`,
       `Best streak: ${rewardState.longestStreak} (${getStreakLabel(rewardState.longestStreak)})`,
       rewardState.rewardUnlocked
@@ -344,7 +343,7 @@ export function QuizExperience({
       return "score-card.png";
     }
 
-    return `${slugify(initialName)}-${rewardState.bestCorrectAnswers}-of-10-score-card.png`;
+    return `${slugify(initialName)}-${rewardState.bestCorrectAnswers}-of-${QUIZ_QUESTION_COUNT}-score-card.png`;
   }, [initialName, rewardState]);
 
   function triggerRipple(event: MouseEvent<HTMLButtonElement>) {
@@ -363,16 +362,22 @@ export function QuizExperience({
   }
 
   function handleSelect(answerIndex: number) {
-    setAnswers((currentAnswers) => {
-      if (currentAnswers[currentIndex] === answerIndex) {
-        return currentAnswers;
-      }
+    if (revealed) return;
 
+    setAnswers((currentAnswers) => {
       const nextAnswers = [...currentAnswers];
       nextAnswers[currentIndex] = answerIndex;
       return nextAnswers;
     });
-    playSfx("select");
+
+    setRevealed(true);
+    setShowPopup(true);
+
+    if (answerIndex === currentQuestion.correctIndex) {
+      playSfx("success");
+    } else {
+      playSfx("error");
+    }
   }
 
   function handleNext() {
@@ -383,6 +388,8 @@ export function QuizExperience({
     }
 
     playSfx("button");
+    setRevealed(false);
+    setShowPopup(false);
 
     if (currentIndex === questions.length - 1) {
       playSfx("success");
@@ -392,6 +399,18 @@ export function QuizExperience({
 
     setCurrentIndex((value) => value + 1);
   }
+
+  useEffect(() => {
+    if (!showPopup || selectedAnswer === -1) {
+      return;
+    }
+
+    const autoAdvanceTimer = window.setTimeout(() => {
+      handleNext();
+    }, 20000);
+
+    return () => window.clearTimeout(autoAdvanceTimer);
+  }, [showPopup, selectedAnswer, currentIndex]);
 
   async function handleSubmitScore() {
     setSubmitting(true);
@@ -434,7 +453,7 @@ export function QuizExperience({
         correctAnswers: payload.correctAnswers,
         bestCorrectAnswers: Math.round(payload.bestScore / 10),
         longestStreak,
-        rewardUnlocked: payload.bestScore >= 70,
+        rewardUnlocked: payload.bestScore >= REWARD_UNLOCK_SCORE,
       };
       setRewardState(nextRewardState);
 
@@ -567,6 +586,8 @@ export function QuizExperience({
     setCurrentIndex(0);
     setAnswers(Array(nextQuestions.length).fill(-1));
     setStep("quiz");
+    setRevealed(false);
+    setShowPopup(false);
     setRewardState(null);
     replaceScoreCardUrl(null);
     lastRevealSoundRef.current = null;
@@ -632,7 +653,7 @@ export function QuizExperience({
                         </div>
                         <div className="rounded-2xl border border-white/10 bg-black/30 p-3 text-center">
                           <p className="text-[0.62rem] uppercase tracking-[0.24em] text-white/45">Saved Score</p>
-                          <p className="mt-2 text-sm font-semibold text-white">{rewardState.bestCorrectAnswers}/10</p>
+                          <p className="mt-2 text-sm font-semibold text-white">{rewardState.bestCorrectAnswers}/{questions.length}</p>
                         </div>
                       </div>
                     </div>
@@ -753,15 +774,15 @@ export function QuizExperience({
         <div className="mt-8 grid gap-4 sm:mt-12 sm:grid-cols-3 sm:gap-6 lg:mt-16">
           <div className="dot-matrix-screen p-4 py-6 sm:p-6 sm:py-8">
             <p className="text-sm font-mono text-[#ffb000]/60 uppercase tracking-widest mb-4">Final Score</p>
-            <p className="text-3xl text-neon-amber font-mono drop-shadow-[0_0_15px_#ffb000] led-flicker sm:text-4xl">{String(correctAnswers).padStart(2, '0')}/10</p>
+            <p className="text-3xl text-neon-amber font-mono drop-shadow-[0_0_15px_#ffb000] led-flicker sm:text-4xl">{String(correctAnswers).padStart(2, '0')}/{questions.length}</p>
           </div>
           <div className="dot-matrix-screen p-4 py-6 sm:p-6 sm:py-8">
             <p className="text-sm font-mono text-[#ffb000]/60 uppercase tracking-widest mb-4">Best Streak</p>
-            <p className="text-3xl text-neon-amber font-mono drop-shadow-[0_0_15px_#ffb000] led-flicker sm:text-4xl">{String(longestStreak).padStart(2, '0')}/10</p>
+            <p className="text-3xl text-neon-amber font-mono drop-shadow-[0_0_15px_#ffb000] led-flicker sm:text-4xl">{String(longestStreak).padStart(2, '0')}/{questions.length}</p>
           </div>
           <div className="dot-matrix-screen p-4 py-6 sm:p-6 sm:py-8">
             <p className="text-sm font-mono text-[#ffb000]/60 uppercase tracking-widest mb-4">High Score</p>
-            <p className="text-3xl text-neon-red font-mono drop-shadow-[0_0_15px_#fc3030] led-flicker sm:text-4xl">{String(Math.round((bestScore ?? 0) / 10)).padStart(2, '0')}/10</p>
+            <p className="text-3xl text-neon-red font-mono drop-shadow-[0_0_15px_#fc3030] led-flicker sm:text-4xl">{String(Math.round((bestScore ?? 0) / 10)).padStart(2, '0')}/{questions.length}</p>
           </div>
         </div>
         
@@ -810,37 +831,61 @@ export function QuizExperience({
         <div className="grid gap-4 sm:gap-5 lg:gap-6">
           {currentQuestion.options.map((option, optionIndex) => {
             const isSelected = selectedAnswer === optionIndex;
+            const isCorrectOption = optionIndex === currentQuestion.correctIndex;
+            const isWrongSelected = revealed && isSelected && !isCorrectOption;
+            const isCorrectRevealed = revealed && isCorrectOption;
+            const isDimmed = revealed && !isSelected && !isCorrectOption;
 
             return (
               <button
                 key={option}
                 type="button"
-                onMouseDown={triggerRipple}
+                disabled={revealed}
+                onMouseDown={!revealed ? triggerRipple : undefined}
                 onClick={() => handleSelect(optionIndex)}
                 className={cn(
-                  "pinball-bumper ripple-btn group block w-full text-left",
-                  isSelected ? "shadow-neon-red" : ""
+                  "pinball-bumper ripple-btn group block w-full text-left transition-all duration-300",
+                  isCorrectRevealed && "shadow-[0_0_20px_5px_rgba(98,255,155,0.4)]",
+                  isWrongSelected && "shadow-neon-red",
+                  !revealed && isSelected && "shadow-neon-red",
+                  isDimmed && "opacity-40",
                 )}
               >
                 <div className={cn(
-                  "rounded-[13px] border border-white/10 px-4 py-4 transition-all duration-200 sm:px-6 sm:py-5 lg:py-6",
-                  isSelected ? "bg-bumper-red shadow-[inset_0_0_30px_#000]" : "bg-bumper-off group-hover:bg-[#333]"
+                  "rounded-[13px] border px-4 py-4 transition-all duration-300 sm:px-6 sm:py-5 lg:py-6",
+                  isCorrectRevealed && "border-[#62ff9b]/50 bg-[radial-gradient(circle_at_30%_30%,#1a4d2e_0%,#0d2618_50%,#000_100%)] shadow-[inset_0_0_30px_rgba(98,255,155,0.15)]",
+                  isWrongSelected && "border-[#fc3030]/50 bg-bumper-red shadow-[inset_0_0_30px_#000]",
+                  !revealed && isSelected && "border-white/10 bg-bumper-red shadow-[inset_0_0_30px_#000]",
+                  !revealed && !isSelected && "border-white/10 bg-bumper-off group-hover:bg-[#333]",
+                  isDimmed && "border-white/5 bg-bumper-off",
                 )}>
                   <div className="flex items-center gap-3 sm:gap-5 lg:gap-6">
                     <div className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-full border-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] sm:h-12 sm:w-12",
-                      isSelected ? "border-[#ffcccc] bg-[#fc3030] shadow-[0_0_15px_#fc3030]" : "border-[#444] bg-[#222]"
+                      "flex h-10 w-10 items-center justify-center rounded-full border-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] sm:h-12 sm:w-12 transition-all duration-300",
+                      isCorrectRevealed && "border-[#62ff9b] bg-[#1a4d2e] shadow-[0_0_15px_#62ff9b]",
+                      isWrongSelected && "border-[#ffcccc] bg-[#fc3030] shadow-[0_0_15px_#fc3030]",
+                      !revealed && isSelected && "border-[#ffcccc] bg-[#fc3030] shadow-[0_0_15px_#fc3030]",
+                      !revealed && !isSelected && "border-[#444] bg-[#222]",
+                      isDimmed && "border-[#333] bg-[#1a1a1a]",
                     )}>
                       <span className={cn(
-                        "font-mono text-base font-bold sm:text-lg",
-                        isSelected ? "text-white" : "text-[#777]"
+                        "font-mono text-base font-bold sm:text-lg transition-all duration-300",
+                        isCorrectRevealed && "text-[#62ff9b]",
+                        isWrongSelected && "text-white",
+                        !revealed && isSelected && "text-white",
+                        !revealed && !isSelected && "text-[#777]",
+                        isDimmed && "text-[#444]",
                       )}>
-                        {String.fromCharCode(65 + optionIndex)}
+                        {isCorrectRevealed ? "\u2713" : isWrongSelected ? "\u2717" : String.fromCharCode(65 + optionIndex)}
                       </span>
                     </div>
                     <span className={cn(
-                      "font-mono text-sm font-bold tracking-tight sm:text-lg lg:text-xl",
-                      isSelected ? "text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" : "text-[#aaa]"
+                      "font-mono text-sm font-bold tracking-tight sm:text-lg lg:text-xl transition-all duration-300",
+                      isCorrectRevealed && "text-[#62ff9b] drop-shadow-[0_0_8px_rgba(98,255,155,0.6)]",
+                      isWrongSelected && "text-white/60 line-through",
+                      !revealed && isSelected && "text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]",
+                      !revealed && !isSelected && "text-[#aaa]",
+                      isDimmed && "text-[#555]",
                     )}>
                       {option}
                     </span>
@@ -852,8 +897,58 @@ export function QuizExperience({
         </div>
       </div>
 
+      {/* Answer result popup overlay */}
+      {showPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fade-in px-4">
+          <div
+            className={cn(
+              "panel-glass relative mx-auto max-w-lg overflow-hidden rounded-[28px] border-2 bg-black/90 p-6 text-center sm:p-8",
+              selectedAnswerIsCorrect
+                ? "border-[#62ff9b]/30 shadow-[0_0_60px_rgba(98,255,155,0.15)]"
+                : "border-[#fc3030]/35 shadow-[0_0_60px_rgba(252,48,48,0.16)]",
+            )}
+          >
+            <div className="dot-matrix-screen mb-5 px-4 py-4">
+              <p
+                className="font-mono text-2xl font-bold tracking-wide sm:text-3xl"
+                style={{
+                  color: selectedAnswerIsCorrect ? "#62ff9b" : "#fc3030",
+                  textShadow: selectedAnswerIsCorrect
+                    ? "0 0 20px #62ff9b, 0 0 40px rgba(98,255,155,0.4)"
+                    : "0 0 20px #fc3030, 0 0 40px rgba(252,48,48,0.4)",
+                }}
+              >
+                {selectedAnswerIsCorrect ? "✓ CORRECT!" : "✕ WRONG!"}
+              </p>
+            </div>
+            {!selectedAnswerIsCorrect && (
+              <p className="mb-4 rounded-2xl border border-[#62ff9b]/20 bg-[#102116] px-4 py-3 font-mono text-xs uppercase tracking-[0.18em] text-[#62ff9b] sm:text-sm">
+                Correct answer: {correctOptionText}
+              </p>
+            )}
+            <p className="text-sm leading-relaxed text-white/85 sm:text-base lg:text-lg">
+              {currentQuestion.popupText}
+            </p>
+            <p className="mt-4 text-xs font-mono uppercase tracking-[0.18em] text-white/40">
+              Auto advancing in 20 seconds
+            </p>
+            <button
+              type="button"
+              onClick={handleNext}
+              className="pinball-bumper group mt-6"
+            >
+              <div className="rounded-[12px] border-b-4 border-[#666] bg-chrome px-8 py-3">
+                <span className="font-mono text-base font-black text-[#111] drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] group-active:translate-y-[2px]">
+                  {currentIndex === questions.length - 1 ? "FINISH QUIZ" : "NEXT QUESTION"}
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-center">
-        {hasSelectedOption ? (
+        {revealed && !showPopup ? (
           <button
             type="button"
             onClick={handleNext}
@@ -865,14 +960,7 @@ export function QuizExperience({
               </span>
             </div>
           </button>
-        ) : (
-          <div className="quiz-fact-panel panel-glass overflow-hidden w-full flex justify-center">
-            <div className="w-[min(92vw,720px)] max-w-3xl rounded-[13px] border border-white/10 bg-[#1a0707] px-4 py-4 text-center shadow-[inset_0_0_20px_rgba(252,48,48,0.25)] transition-all duration-200 sm:px-6 sm:py-5 lg:py-6">
-              <p className="text-base text-[#fc3030] font-semibold">Trivia Fact</p>
-              <p className="mt-2 text-sm font-medium text-white sm:text-base">{factForQuestion}</p>
-            </div>
-          </div>
-        )}
+        ) : null}
       </div>
     </section>
   );
