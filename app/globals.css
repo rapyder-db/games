@@ -5,8 +5,8 @@
 :root {
   color-scheme: dark;
   --arcade-stage-width: clamp(320px, 44vw, 460px);
-  --arcade-stage-min-height: clamp(460px, 74vh, 620px);
-  --arcade-cabinet-max-height: clamp(420px, 72vh, 760px);
+  --arcade-stage-min-height: clamp(460px, 74dvh, 620px);
+  --arcade-cabinet-max-height: clamp(420px, 72dvh, 760px);
   --arcade-coin-left: 41%;
   --arcade-coin-size: clamp(92px, 11vw, 128px);
   --arcade-button-bottom: 30px;
@@ -36,6 +36,10 @@ video,
 canvas,
 svg {
   max-width: 100%;
+}
+
+.app-shell {
+  min-height: 100dvh;
 }
 
 ::selection {
@@ -141,7 +145,7 @@ svg {
 
 .arcade-start-view {
   position: relative;
-  min-height: calc(100vh - 170px);
+  min-height: calc(100dvh - 170px);
 }
 
 .arcade-start-stage {
@@ -151,7 +155,7 @@ svg {
 .arcade-machine-layout {
   position: relative;
   height: 100%;
-  min-height: calc(100vh - 130px);
+  min-height: calc(100dvh - 130px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -162,7 +166,7 @@ svg {
 .arcade-stage {
   width: min(100%, var(--arcade-stage-width));
   min-height: var(--arcade-stage-min-height);
-  max-height: calc(100vh - 170px);
+  max-height: calc(100dvh - 170px);
   border-radius: 26px;
   overflow: hidden;
   background: radial-gradient(circle at center, rgba(0,0,0,0.4), rgba(0,0,0,0.85));
@@ -453,20 +457,6 @@ svg {
   }
 }
 
-.arcade-coin-spin {
-  animation: arcadeCoinTwirl 0.72s linear infinite;
-  transform-origin: center 50%;
-}
-
-@keyframes arcadeCoinTwirl {
-  0% {
-    transform: rotateY(0deg) rotateZ(0deg);
-  }
-  100% {
-    transform: rotateY(720deg) rotateZ(10deg);
-  }
-}
-
 .ripple-btn {
   position: relative;
   overflow: hidden;
@@ -636,6 +626,13 @@ svg {
 
 .reward-card-preview {
   width: 100%;
+  max-height: min(72dvh, 760px);
+  overflow: auto;
+}
+
+.reward-card-image {
+  max-height: min(70dvh, 720px);
+  object-fit: contain;
 }
 
 .results-shell {
@@ -681,6 +678,7 @@ svg {
 
 .quiz-answer-grid {
   gap: clamp(0.65rem, 1.8vw, 1.5rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .quiz-answer-button {
@@ -719,6 +717,21 @@ svg {
   max-height: calc(100svh - 2rem);
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.leaderboard-shell {
+  min-width: 0;
+}
+
+.leaderboard-title,
+.leaderboard-player-name,
+.leaderboard-company-pill,
+.leaderboard-score {
+  overflow-wrap: anywhere;
+}
+
+.leaderboard-table-wrap {
+  max-width: 100%;
 }
 
 .reward-card-orbit {
@@ -929,8 +942,8 @@ svg {
 @media (max-width: 1279px) {
   :root {
     --arcade-stage-width: clamp(320px, 50vw, 440px);
-    --arcade-stage-min-height: clamp(460px, 72vh, 580px);
-    --arcade-cabinet-max-height: clamp(420px, 68vh, 700px);
+    --arcade-stage-min-height: clamp(460px, 72dvh, 580px);
+    --arcade-cabinet-max-height: clamp(420px, 68dvh, 700px);
     --arcade-button-width: min(76%, 250px);
   }
 }
@@ -938,8 +951,8 @@ svg {
 @media (max-width: 1024px) {
   :root {
     --arcade-stage-width: min(100%, 420px);
-    --arcade-stage-min-height: clamp(500px, 76vh, 560px);
-    --arcade-cabinet-max-height: clamp(430px, 64vh, 620px);
+    --arcade-stage-min-height: clamp(500px, 76dvh, 560px);
+    --arcade-cabinet-max-height: clamp(430px, 64dvh, 620px);
     --arcade-coin-left: 39%;
     --arcade-coin-size: clamp(90px, 18vw, 118px);
   }
@@ -983,8 +996,8 @@ svg {
 @media (max-width: 768px) {
   :root {
     --arcade-stage-width: min(100%, 390px);
-    --arcade-stage-min-height: clamp(520px, 82vh, 620px);
-    --arcade-cabinet-max-height: clamp(410px, 58vh, 520px);
+    --arcade-stage-min-height: clamp(520px, 82dvh, 620px);
+    --arcade-cabinet-max-height: clamp(410px, 58dvh, 520px);
     --arcade-coin-left: 37%;
     --arcade-coin-size: clamp(82px, 24vw, 110px);
     --arcade-button-bottom: 20px;
@@ -1058,6 +1071,15 @@ svg {
     border-radius: 22px;
     padding: 1.25rem;
   }
+
+  .leaderboard-header {
+    margin-bottom: 1rem;
+  }
+
+  .leaderboard-title {
+    font-size: clamp(1.45rem, 7vw, 3rem);
+    line-height: 1.05;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1067,7 +1089,7 @@ svg {
   }
 
   .arcade-start-view {
-    min-height: 100vh;
+    min-height: 100dvh;
     padding-bottom: 0.8rem;
   }
 
@@ -1095,7 +1117,7 @@ svg {
   }
 
   .arcade-stage {
-    min-height: min(78vh, 620px);
+    min-height: min(78dvh, 620px);
     max-height: none;
   }
 
@@ -1225,6 +1247,7 @@ svg {
   }
 
   .quiz-answer-grid {
+    grid-template-columns: 1fr;
     gap: 0.6rem;
   }
 
@@ -1244,6 +1267,27 @@ svg {
   .answer-popup-panel {
     width: 100%;
     max-height: calc(100svh - 1.5rem);
+  }
+
+  .leaderboard-shell {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .leaderboard-table-wrap {
+    border-radius: 18px;
+    padding: 0.35rem;
+  }
+
+  .leaderboard-player-name {
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    line-height: 1.25;
+  }
+
+  .leaderboard-score {
+    font-size: 1rem;
+    letter-spacing: 0.08em;
   }
 
   header {
@@ -1290,6 +1334,68 @@ svg {
 
   .answer-popup-panel {
     max-height: calc(100svh - 1rem);
+  }
+}
+
+@media (max-height: 700px) and (min-width: 700px) {
+  :root {
+    --arcade-stage-width: min(100%, 360px);
+    --arcade-stage-min-height: clamp(360px, 74dvh, 460px);
+    --arcade-cabinet-max-height: clamp(330px, 66dvh, 440px);
+    --arcade-coin-size: clamp(70px, 9vw, 96px);
+    --arcade-button-bottom: 14px;
+    --arcade-button-width: min(72%, 220px);
+  }
+
+  .arcade-machine-layout {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .arcade-stage {
+    max-height: none;
+  }
+
+  .quiz-play-shell {
+    max-width: 980px;
+  }
+
+  .quiz-question-screen {
+    min-height: 72px;
+    margin-bottom: 0.65rem;
+  }
+
+  .quiz-answer-inner {
+    min-height: 44px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .app-shell {
+    padding-top: 0.4rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .site-header {
+    margin-bottom: 0.45rem;
+    padding-bottom: 0.45rem;
+  }
+
+  .arcade-floating-controls {
+    gap: 0.5rem;
+  }
+
+  .arcade-player-pill {
+    padding: 0.42rem 0.65rem;
+  }
+
+  .quiz-question-text {
+    font-size: clamp(0.86rem, 2.4vw, 1.15rem);
+  }
+
+  .answer-popup-panel {
+    width: min(96vw, 42rem);
+    padding: 1rem;
   }
 }
 
@@ -1494,7 +1600,6 @@ svg {
 
   .arcade-coin-idle,
   .arcade-coin-insert,
-  .arcade-coin-spin,
   .arcade-stage-shake,
   .led-flicker,
   .reward-card-reveal,
