@@ -239,16 +239,6 @@ export function ArcadeLobby({ player }: ArcadeLobbyProps) {
             </div>
           )}
 
-          {stage === "inserting" && (
-            <div className="arcade-coin-inserted-gif-wrap" aria-hidden="true">
-              <img
-                src="/Coin Inserted.gif"
-                alt=""
-                className="arcade-coin-inserted-gif"
-              />
-            </div>
-          )}
-
           <div className="arcade-coin-shot-wrap">
             <Image
               src="/Coin.png"
@@ -257,7 +247,7 @@ export function ArcadeLobby({ player }: ArcadeLobbyProps) {
               height={200}
               className={
                 stage === "inserting"
-                  ? "arcade-coin-insert arcade-coin-glitter arcade-coin-spin"
+                  ? "arcade-coin-insert arcade-coin-glitter"
                   : "arcade-coin-idle"
               }
               priority

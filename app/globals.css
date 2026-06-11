@@ -373,46 +373,6 @@ svg {
   pointer-events: none;
 }
 
-.arcade-coin-inserted-gif-wrap {
-  position: absolute;
-  inset: 9% 8% 18%;
-  z-index: 18;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  animation: coinInsertedReveal 2.25s ease-out forwards;
-}
-
-.arcade-coin-inserted-gif {
-  width: min(100%, 420px);
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: 24px;
-  mix-blend-mode: screen;
-  filter:
-    saturate(1.18)
-    contrast(1.08)
-    drop-shadow(0 0 28px rgba(255, 176, 0, 0.32))
-    drop-shadow(0 18px 42px rgba(0, 0, 0, 0.72));
-}
-
-@keyframes coinInsertedReveal {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 14px, 0) scale(0.92);
-  }
-  12%,
-  82% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(0, -12px, 0) scale(1.04);
-  }
-}
-
 .arcade-machine-layout .arcade-stage {
   margin-top: 15px;
 }
@@ -1139,15 +1099,6 @@ svg {
     max-height: none;
   }
 
-  .arcade-coin-inserted-gif-wrap {
-    inset: 11% 5% 20%;
-  }
-
-  .arcade-coin-inserted-gif {
-    width: min(100%, 340px);
-    border-radius: 18px;
-  }
-
   .arcade-screen-copy {
     top: 18%;
     width: 92%;
@@ -1544,7 +1495,6 @@ svg {
   .arcade-coin-idle,
   .arcade-coin-insert,
   .arcade-coin-spin,
-  .arcade-coin-inserted-gif-wrap,
   .arcade-stage-shake,
   .led-flicker,
   .reward-card-reveal,
