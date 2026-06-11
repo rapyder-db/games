@@ -967,7 +967,7 @@ export function QuizExperience({
             <button
               type="button"
               onClick={handleNext}
-              className="pinball-bumper group mt-6"
+              className="answer-popup-next pinball-bumper group mt-6"
             >
               <div className="rounded-[12px] border-b-4 border-[#666] bg-chrome px-8 py-3">
                 <span className="font-mono text-base font-black text-[#111] drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] group-active:translate-y-[2px]">
@@ -984,7 +984,7 @@ export function QuizExperience({
           <button
             type="button"
             onClick={handleNext}
-            className="pinball-bumper group"
+            className="quiz-next-button pinball-bumper group"
           >
             <div className="rounded-[12px] border-b-4 border-[#666] bg-chrome px-6 py-3 sm:px-10 sm:py-4">
               <span className="font-mono text-base font-black text-[#111] drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] group-active:translate-y-[2px] sm:text-xl">
